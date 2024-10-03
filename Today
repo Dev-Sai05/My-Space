@@ -1,3 +1,51 @@
+IDENTIFICATION DIVISION.
+PROGRAM-ID. GotoExample.
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+01 NUM-A PIC 9 VALUE 0.
+01 NUM-B PIC 9 VALUE 0.
+
+PROCEDURE DIVISION.
+    PERFORM INIT.
+    GOTO MAIN-PROCESS.
+    
+    INIT.
+        DISPLAY 'Enter value for NUM-A: '.
+        ACCEPT NUM-A.
+        DISPLAY 'Enter value for NUM-B: '.
+        ACCEPT NUM-B.
+        GOTO MAIN-PROCESS.
+
+    MAIN-PROCESS.
+        IF NUM-A = NUM-B THEN
+            GOTO EQUAL-VALUE
+        ELSE
+            GOTO UNEQUAL-VALUE.
+
+    EQUAL-VALUE.
+        DISPLAY 'NUM-A and NUM-B are equal.'.
+        GOTO END-PROGRAM.
+
+    UNEQUAL-VALUE.
+        DISPLAY 'NUM-A and NUM-B are not equal.'.
+        GOTO END-PROGRAM.
+
+    END-PROGRAM.
+        DISPLAY 'Program finished.'.
+        STOP RUN.
+
+
+
+
+
+
+
+
+
+
+
+
+
 //    SBI Core Banking Project, Kondapur, Hyderabad, India.       *
 //*****************************************************************
 //                                                                *
