@@ -1,0 +1,144 @@
+set serveroutput on;
+
+DROP PROCEDURE CIDU_MIG_CUSM1;
+create or replace PROCEDURE CIDU_MIG_CUSM1(CUST_ACCT in varchar2) is
+
+
+                        BEGIN
+
+                                insert into hism (select * from cusm  where SOC_NO = '003' and CUST_ACCT_NO = CUST_ACCT);
+
+                                insert into cusvah (select * from cusvaa where INST_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into  cusvdh (select * from  cusvdd where KEY_1 LIKE '003'||CUST_ACCT || '%');
+
+                                insert into  cusvch (select * from  cusvcc where  KEY_1 LIKE '003'|| CUST_ACCT || '%');
+
+                                insert into  cusveh (select * from  cusvee where KEY_1 LIKE '003'|| CUST_ACCT || '%');
+
+                                commit;
+
+                               EXCEPTION WHEN OTHERS THEN
+                                   dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+
+                        END;
+                        /
+
+DROP PROCEDURE CIDU_MIG_CUSM2;
+create or replace PROCEDURE CIDU_MIG_CUSM2(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                insert into hiid (select * from cuid where INST_NO = '003' AND  CUST_NO = CUST_ACCT);
+
+                                insert into himi (select * from cumi where INST_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into nadh (select * from nadm where INST_NO = '003' AND CUST_ACC_NO = CUST_ACCT);
+
+                                insert into cenh (select * from cena where INST_NO = '003' AND ACCOUNT_NO = CUST_ACCT);
+
+                                insert into ckyh (select * from cky1 where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                commit;
+
+                               EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                    dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+
+                                rollback;
+                        END;
+                        /
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM3(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                insert into ckah (select * from ckya where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into creh (select * from crep where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into turh (select * from turn where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into cinh (select * from ccin where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into chnh (select * from chnl where  KEY_1 LIKE '003'|| CUST_ACCT);
+
+                                insert into cseh (select * from cseg where SOC_NO = '003' AND CIF_NO = CUST_ACCT);
+                                commit;
+
+
+                               EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                  dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+
+
+                     END;
+                     /
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM4(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                insert into vihh (select * from visa where INST_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into ckhh (select * from ckyc where SOC_NO = '003' AND CIF_NO = CUST_ACCT);
+
+                                insert into foah (select * from faob where SOC_NO = '003' AND CUST_ACCT_NO = CUST_ACCT);
+
+                                insert into cdfh (select * from cdfn where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into hih1 (select * from cusvd1 where  KEY_1 LIKE '003'|| CUST_ACCT || '%');
+
+                                insert into hih4 (select * from cusvd4 where INST_NO = '003' AND CUST_NO  = CUST_ACCT);
+                                commit;
+
+
+                                EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                        dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+                        END;
+                        /
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM5(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                insert into cpah (select * from cpan where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into mivh (select * from  micv where INST_NO = '003' AND IDENTITY_NO = CUST_ACCT);
+
+                                insert into hids (select * from uids where ACCT_NO = CUST_ACCT);
+
+                                insert into cmoh (select * from cmob where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+--                                insert into csrh (select * from csrc where  SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into mich (select * from micm where INST_NO = '003' AND CUSTOMER_NO LIKE CUST_ACCT || '%' );
+
+                                insert into cidh (select * from cidu where SOC_NO = '003' AND FROM_CIF = CUST_ACCT);
+                                commit;
+
+                                EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                        dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+
+                        END;
+                        /
+
+create or replace PROCEDURE CIDU_MIG_CUSM50(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                insert into cadt (SOC_NO, CIF_NO, CUSTOMER_STATUS, ARCHIVAL_DATE) select SOC_NO, CUST_ACCT_NO, CUSTOMER_STATUS, SYSDATE from cusm where SOC_NO= '003' AND CUST_ACCT_NO = CUST_ACCT;
+
+                                commit;
+
+                                EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                        dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+                                        END;
+                                        /
+
