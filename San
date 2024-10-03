@@ -114,7 +114,7 @@ create or replace PROCEDURE CIDU_MIG_CUSM5(CUST_ACCT in varchar2) is
 
                                 insert into cmoh (select * from cmob where SOC_NO = '003' AND CUST_NO = CUST_ACCT);
 
---                                insert into csrh (select * from csrc where  SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+                                insert into csrh (select * from csrc where  SOC_NO = '003' AND CUST_NO = CUST_ACCT);
 
                                 insert into mich (select * from micm where INST_NO = '003' AND CUSTOMER_NO LIKE CUST_ACCT || '%' );
 
