@@ -1,0 +1,108 @@
+public class PFEnquiryService_Child {
+
+    Logger logger = LoggerFactory.getLogger(PFEnquiryService_Child.class);
+    JVMPFNO jvmpfno = new JVMPFNO();
+
+    // Method to call PFEnquiry child service with a dynamic number of records
+    public List<String> callPFEnquiryChild(String branchno, String tellerno, String pfno, String cifno, int requestedNumberOfRecords, String lastrow) throws InterruptedException, ExecutionException {
+        logger.info("VC------------------------PF Enquiry Child Service Started------------------------VC");
+
+        String lslimitflag = "Y";
+        int Rowcount = lastrow == null ? 0 : Integer.parseInt(lastrow);
+
+        // Determine the actual number of records to fetch
+        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 10;
+
+        List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
+        ForkJoinPool customThreadPool = new ForkJoinPool(25);
+        int fetchedRecordsCount = 0;
+        StringBuilder allRecordsBuilder = new StringBuilder();
+
+        while (!lslimitflag.equals("N") && fetchedRecordsCount < numberOfRecordsToFetch) {
+            final int currentRowcount = Rowcount;
+
+            CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
+                LsPfBranchNumber pfinput1 = new LsPfBranchNumber();
+                LsPfTellerNo pfinput2 = new LsPfTellerNo();
+                LsPfNumber pfinput3 = new LsPfNumber();
+                LsPfCustomerNo pfinput4 = new LsPfCustomerNo();
+                LsPfDataOut pfoutput1 = new LsPfDataOut();
+                LsPfErrorMsgNo pfoutput2 = new LsPfErrorMsgNo();
+                LsPfRowcount pfoutput3 = new LsPfRowcount();
+                LsPfOutFlag pfoutput4 = new LsPfOutFlag();
+
+                // Populate inputs for JVMSCPF
+                pfinput1.setLsPfBranchNumber(String.format("%016d", Integer.parseInt(branchno)));
+                pfinput2.setLsPfTellerNo(String.format("%016d", Integer.parseInt(tellerno)));
+                pfinput3.setLsPfNumber(pfno);
+                pfoutput3.setLsPfRowcount(currentRowcount);
+
+                // Call JVMPFNO backend service
+                jvmpfno.JVMPFNO(pfinput1, pfinput2, pfinput3, pfinput4, pfoutput1, pfoutput2, pfoutput3, pfoutput4);
+
+                ResponseData responseData = new ResponseData();
+                responseData.outResponse = pfoutput1.getLsPfDataOut();
+                responseData.errno = pfoutput2.getLsPfErrorMsgNo();
+                responseData.limitFlag = pfoutput4.getLsPfOutFlag();
+                responseData.rowcount = pfoutput3.getLsPfRowcount() + 1;
+
+                return responseData;
+            }, customThreadPool);
+
+            futures.add(future);
+
+            ResponseData lastResult = futures.get(futures.size() - 1).get();
+
+            // Check if outResponse is null, empty, or just spaces
+            if (lastResult.outResponse == null || lastResult.outResponse.trim().isEmpty()) {
+                logger.error("No valid outResponse from JVMSCPF. Checking errno...");
+
+                // If errno is "0868", set it to "0000"
+                if ("0868".equals(lastResult.errno)) {
+                    logger.info("Setting errno to '0000' since outResponse is empty and errno is '0868'");
+                    lastResult.errno = "0000";
+                }
+
+                break;  // Exit the loop
+            }
+
+            lslimitflag = lastResult.limitFlag;
+            Rowcount = lastResult.rowcount;
+
+            String outResponse = lastResult.outResponse;
+            int startIndex = 0;
+
+            // Calculate the number of records in the current response
+            while (startIndex + 142 <= outResponse.length() && fetchedRecordsCount < numberOfRecordsToFetch) {
+                int endIndex = startIndex + 142;  // Get the next record chunk
+                allRecordsBuilder.append(outResponse.substring(startIndex, endIndex));  // Append each record
+                startIndex = endIndex;  // Move to the next record
+                fetchedRecordsCount++;  // Increment fetched records count
+            }
+        }
+
+        // Prepare final response list
+        List<String> res = new ArrayList<>();
+        res.add(allRecordsBuilder.toString());  // Add the concatenated records
+        res.add(String.valueOf(fetchedRecordsCount));  // Add total number of fetched records
+
+        // Set errno to "0000" if it's null or empty
+        if (!futures.isEmpty()) {
+            String errno = futures.get(futures.size() - 1).get().errno;
+            res.add(errno == null || errno.isEmpty() ? "0000" : errno);  // Add error number
+        }
+
+        logger.info("VC------------------------PF Enquiry Child Service Ended------------------------VC");
+
+        customThreadPool.shutdown();  // Shut down the thread pool
+        return res;
+    }
+
+    // Inner class to hold response data from JVMSCPF call
+    private class ResponseData {
+        int rowcount;
+        String outResponse;
+        String errno;
+        String limitFlag;
+    }
+}
