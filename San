@@ -216,3 +216,154 @@ while true; do
     fi
 done
 
+
+
+
+------------------------------------------------------
+
+
+
+set serveroutput on;
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM1(CUST_ACCT in varchar2) is
+
+
+                        BEGIN
+
+                                INSERT /*+ INDEX (HISM HISMPK)*/ INTO HISM (SELECT /*+ INDEX (CUSM CUSMPK)*/ /*+parallel(cusm,4) */ * FROM CUSM WHERE SOC_NO='003' AND CUST_ACCT_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CUSVAH CUSVAHPK)*/ INTO CUSVAH (SELECT /*+ INDEX (CUSVAA CUSVAAPK)*/ /*+parallel(cusvaa,4) */ * FROM CUSVAA WHERE INST_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CUSVDH CUSVDHPK)*/ INTO CUSVDH (SELECT /*+ INDEX (CUSVDD CUSVDDPK)*/ /*+parallel(cusvdd,4) */ * FROM CUSVDD WHERE KEY_1 LIKE '003'||CUST_ACCT || '%');
+
+                                INSERT /*+ INDEX (CUSVCH CUSVCHPK)*/ INTO CUSVCH (SELECT /*+ INDEX (CUSVCC CUSVCCPK)*/ /*+parallel(cusvcc,4) */ * FROM CUSVCC WHERE KEY_1 LIKE '003'||CUST_ACCT || '%');
+
+                                INSERT /*+ INDEX (CUSVEH CUSVEHPK)*/ INTO CUSVEH (SELECT /*+ INDEX (CUSVEE CUSVEEPK)*/ /*+parallel(cusvee,4) */ * FROM CUSVEE WHERE KEY_1 LIKE '003'||CUST_ACCT || '%');
+
+                                commit;
+
+                               EXCEPTION WHEN OTHERS THEN
+                                   dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+
+                        END;
+                        /
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM2(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                INSERT /*+ INDEX (HIID HIIDPK)*/ INTO HIID (SELECT /*+ INDEX (CUID CUIDPK)*/ /*+parallel(cuid,4) */ * FROM CUID WHERE INST_NO = '003' AND  CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (HIMI HIMIPK)*/ INTO HIMI (SELECT /*+ INDEX (CUMI CUMIPK)*/ /*+parallel(cumi,4) */ * FROM CUMI WHERE INST_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (NADH NADHPK)*/ INTO NADH (SELECT /*+ INDEX (NADM NADMPK)*/ /*+parallel(nadm,4) */ * FROM NADM WHERE INST_NO = '003' AND CUST_ACC_NO = CUST_ACCT AND SYSTEM = 'CIF');
+
+                                INSERT /*+ INDEX (CENH CENHPK)*/ INTO CENH (SELECT /*+ INDEX (CENA CENAPK)*/ /*+parallel(cena,4) */ * FROM CENA WHERE INST_NO = '003' AND ACCOUNT_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CKYH CKYH_PK)*/ INTO CKYH (SELECT /*+ INDEX (CKY1 CKY1_PK)*/ /*+parallel(cky1,4) */ * FROM CKY1 WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                commit;
+
+                               EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                    dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+
+                                rollback;
+                        END;
+                        /
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM3(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                INSERT /*+ INDEX (CKAH CKAH_PK1)*/ INTO CKAH (SELECT /*+ INDEX (CKYA CKYA_PK1)*/ /*+parallel(ckya,4) */ * FROM CKYA WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CREH CREH_PK2)*/ INTO CREH (SELECT /*+ INDEX (CREP CREP_PK2)*/ /*+parallel(crep,4) */ * FROM CREP WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (TURH TURH_PK)*/ INTO TURH (SELECT /*+ INDEX (TURN TURN_PK)*/ /*+parallel(turn,4) */ * FROM TURN WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CINH CINH_PK)*/ INTO CINH (SELECT /*+ INDEX (CCIN CCIN_PK)*/ /*+parallel(ccin,4) */ * FROM CCIN WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CHNH CHNHPK)*/ INTO CHNH (SELECT /*+ INDEX (CHNL CHNLPK)*/ /*+parallel(chnl,4) */ * FROM CHNL WHERE KEY_1 LIKE '003'|| CUST_ACCT);
+
+                                INSERT /*+ INDEX (CSEH CSEH_PK)*/ INTO CSEH (SELECT /*+ INDEX (CSEG CSEG_PK)*/ /*+parallel(cseg,4) */ * FROM CSEG WHERE SOC_NO = '003' AND CIF_NO = CUST_ACCT);
+
+                                commit;
+
+
+                               EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                  dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+
+
+                     END;
+                     /
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM4(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                INSERT /*+ INDEX (VIHH VIHHPK)*/ INTO VIHH (SELECT /*+ INDEX (VISA VISAPK)*/ /*+parallel(visa,4) */ * FROM VISA WHERE INST_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CKHH CKHH_PK)*/ INTO CKHH (SELECT /*+ INDEX (CKYC CKYC_PK)*/ /*+parallel(ckyc,4) */ * FROM CKYC WHERE SOC_NO = '003' AND CIF_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (FOAH FOAH_PK1)*/ INTO FOAH (SELECT /*+ INDEX (FAOB FAOB_PK1)*/ /*+parallel(faob,4) */ * FROM FAOB WHERE SOC_NO = '003' AND CUST_ACCT_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CDFH CDFHPK)*/ INTO CDFH (SELECT /*+ INDEX (CDFN CDFNPK)*/ /*+parallel(cdfn,4) */ * FROM CDFN WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (HIH1 HIH1PK)*/ INTO HIH1 (SELECT /*+ INDEX (CUSVD1 CUSVD1PK)*/ /*+parallel(cusvd1,4) */ * FROM CUSVD1 WHERE KEY_1 LIKE '003'|| CUST_ACCT || '%');
+
+                                INSERT /*+ INDEX (HIH4 HIH4PK)*/ INTO HIH4 (SELECT /*+ INDEX (CUSVD4 CUSVD4PK)*/ /*+parallel(cusvd4,4) */ * FROM CUSVD4 WHERE INST_NO = '003' AND CUST_NO  = CUST_ACCT);
+                                commit;
+
+
+                               EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                        dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+                        END;
+                        /
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM5(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                INSERT /*+ INDEX (CPAH CPAHPK)*/ INTO CPAH (SELECT /*+ INDEX (CPAN CPANPK)*/ /*+parallel(cpan,4) */ * FROM CPAN WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (MIVH MIVHPK)*/ INTO MIVH (SELECT /*+ INDEX (MICV MICVPK)*/ /*+parallel(micv,4) */ * FROM MICV WHERE INST_NO = '003' AND IDENTITY_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (HIDS HIDS_PK)*/ INTO HIDS (SELECT /*+ INDEX (UIDS UIDS_PK)*/ /*+parallel(uids,4) */ * FROM UIDS WHERE ACCT_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CMOH CMOHPK)*/ INTO CMOH (SELECT /*+ INDEX (CMOB CMOBPK)*/ /*+parallel(cmob,4) */ * FROM CMOB WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (CSRH CSRHPK)*/ INTO CSRH (SELECT /*+ INDEX (CSRC CSRCPK)*/ /*+parallel(CSRC,4) */ * FROM CSRC WHERE SOC_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                INSERT /*+ INDEX (MICH MICHPK)*/ INTO MICH (SELECT /*+ INDEX (MICM MICMPK)*/ /*+parallel(micm,4) */ * FROM MICM WHERE INST_NO = '003' AND CUSTOMER_NO LIKE CUST_ACCT || '%' );
+
+                                INSERT /*+ INDEX (CIDH CIDHPK)*/ INTO CIDH (SELECT /*+ INDEX (CIDU CIDUPK)*/ /*+parallel(cidu,4) */ * FROM CIDU WHERE SOC_NO = '003' AND FROM_CIF = CUST_ACCT);
+                                commit;
+
+
+                               EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                        dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+
+                                                END;
+                                                /
+
+create or replace PROCEDURE CIDU_MIG_CUSM50(CUST_ACCT in varchar2) is
+
+                        BEGIN
+
+                                INSERT /*+ INDEX (CADT CADTPK)*/ INTO CADT (SOC_NO, CIF_NO, CUSTOMER_STATUS, ARCHIVAL_DATE) SELECT /*+ INDEX (CUSM CUSMPK)*/ /*+parallel(cusm,4) */ SOC_NO, CUST_ACCT_NO, CUSTOMER_STATUS, SYSDATE FROM CUSM WHERE SOC_NO= '003' AND CUST_ACCT_NO = CUST_ACCT;
+                                commit;
+
+                               EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                                        dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+                                        END;
+                                        /
