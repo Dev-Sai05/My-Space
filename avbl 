@@ -186,3 +186,105 @@ public class AccountBalanceForkJoin {
         System.out.println("Total Balance for all accounts: " + totalBalance);
     }
 }
+
+
+
+---------Atomic Reference Array-----------
+
+import java.util.List;
+import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceArray;
+
+public class AccountBalanceForkJoin {
+
+    // Recursive task for fetching account balances
+    static class BalanceTask extends RecursiveTask<Void> {
+
+        private static final int THRESHOLD = 5; // Threshold for splitting the task
+        private List<String> accountNumbers;
+        private int start;
+        private int end;
+        private AtomicInteger sequence; // Atomic integer for sequence number tracking
+        private AtomicReferenceArray<String> balances; // To store balances in the correct order
+
+        public BalanceTask(List<String> accountNumbers, int start, int end, AtomicInteger sequence, AtomicReferenceArray<String> balances) {
+            this.accountNumbers = accountNumbers;
+            this.start = start;
+            this.end = end;
+            this.sequence = sequence;
+            this.balances = balances;
+        }
+
+        // Mock method to simulate fetching balance for an account from invm
+        private double getBalanceFromInvm(String accountNumber, int sequenceNumber) {
+            try {
+                Thread.sleep(500); // Simulating delay
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            double balance = Math.random() * 10000; // Mocked balance
+            return balance;
+        }
+
+        @Override
+        protected Void compute() {
+            // If the task is small enough, compute directly
+            if (end - start <= THRESHOLD) {
+                for (int i = start; i < end; i++) {
+                    int sequenceNumber = sequence.getAndIncrement(); // Assign sequence number and increment
+                    double balance = getBalanceFromInvm(accountNumbers.get(i), sequenceNumber);
+                    balances.set(sequenceNumber - 1, "Sequence: " + sequenceNumber + ", Account: " + accountNumbers.get(i) + ", Balance: " + balance);
+                }
+            } else {
+                // If the task is too large, split it into smaller tasks
+                int mid = (start + end) / 2;
+                BalanceTask leftTask = new BalanceTask(accountNumbers, start, mid, sequence, balances);
+                BalanceTask rightTask = new BalanceTask(accountNumbers, mid, end, sequence, balances);
+
+                // Fork the subtasks
+                leftTask.fork();
+                rightTask.fork();
+
+                // Join the results
+                leftTask.join();
+                rightTask.join();
+            }
+            return null;
+        }
+    }
+
+    // Function to split the long account number string into individual account numbers
+    public static List<String> splitAccountNumbers(String accountNumbers, int lengthOfEachAccount) {
+        return List.of(accountNumbers.split("(?<=\\G.{" + lengthOfEachAccount + "})"));
+    }
+
+    public static void main(String[] args) {
+        // Your input string with 15 account numbers, each 11 digits long
+        String accountNumbersString = "970582658979705826589789705826589799705826589709705826589197058265892970582658973970582658974970582655970970582658916970582658979705826589789705826589799705826589702";
+
+        // Split the string into 15 account numbers of 11 digits each
+        List<String> accountNumbers = splitAccountNumbers(accountNumbersString, 11);
+
+        // Create a ForkJoinPool
+        ForkJoinPool forkJoinPool = new ForkJoinPool();
+
+        // Create an AtomicInteger to track the sequence number
+        AtomicInteger sequence = new AtomicInteger(1);
+
+        // Create an AtomicReferenceArray to store balances with sequence numbers
+        AtomicReferenceArray<String> balances = new AtomicReferenceArray<>(accountNumbers.size());
+
+        // Create the main task (full range of account numbers)
+        BalanceTask task = new BalanceTask(accountNumbers, 0, accountNumbers.size(), sequence, balances);
+
+        // Start the Fork/Join process
+        forkJoinPool.invoke(task);
+
+        // Print all balances in sequence order
+        for (int i = 0; i < balances.length(); i++) {
+            System.out.println(balances.get(i));
+        }
+    }
+}
