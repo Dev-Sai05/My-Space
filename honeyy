@@ -142,3 +142,31 @@ public class AvailableBalance {
         }
     }
 }
+
+
+---------------------------
+
+19:02:25.       | DBIO:(A100) FILE-INDEX, FILE-NUM, NO-DATA-SETS: 0433 0432 0430                                                          
+19:02:25.       | DBIO:(A100) FIRST ENTRY = AACH                                                                                          
+FILE OPEN UNSUCCESSFUL
+BAD OPEN FOR THE ONFFILE,STATUS35
+19:02:25.       | UT9004: (A000) INITIAL SET TO BE DONE                                                                                   
+ CURR-BAL : +00000000500000000
+FOR SECOND TIME  .... 
+INVM-REC : 0030000004000203959
+
+
+
+java.lang.NullPointerException
+	at java.base/java.lang.System.arraycopy(Native Method)
+	at com.tcs.bancs.microservices.Balance_Enquery.DBIO.__MF_SLICE_000000021(DBIO.COB:6836)
+	at com.tcs.bancs.microservices.Balance_Enquery.DBIO._MF_PERFORM_4_45(DBIO.COB:65535)
+	at com.tcs.bancs.microservices.Balance_Enquery.DBIO.__MF_SLICE_000000006(DBIO.COB:6057)
+	at com.tcs.bancs.microservices.Balance_Enquery.DBIO._MF_PERFORM_4_45(DBIO.COB:65535)
+	at com.tcs.bancs.microservices.Balance_Enquery.DBIO.DBIO(DBIO.COB:65535)
+	at com.tcs.bancs.microservices.Balance_Enquery.JVMBE._MF_PERFORM_4_8(JVMBE.COB:5199)
+	at com.tcs.bancs.microservices.Balance_Enquery.JVMBE._MF_PERFORM_4_8(JVMBE.COB:5174)
+	at com.tcs.bancs.microservices.Balance_Enquery.JVMBE.JVMBE(JVMBE.COB:65535)
+	at com.tcs.bancs.microservices.Balance_Enquery.JVMBE.JVMBE(JVMBE.COB:65535)
+	at com.tcs.bancs.microservices.Avbl_Service.getBalanceFromInvm(Avbl_Service.java:42)
+	at com.tcs.bancs.microservices.Avbl_Service.main(Avbl_Service.java:70)
