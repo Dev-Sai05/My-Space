@@ -170,3 +170,71 @@ java.lang.NullPointerException
 	at com.tcs.bancs.microservices.Balance_Enquery.JVMBE.JVMBE(JVMBE.COB:65535)
 	at com.tcs.bancs.microservices.Avbl_Service.getBalanceFromInvm(Avbl_Service.java:42)
 	at com.tcs.bancs.microservices.Avbl_Service.main(Avbl_Service.java:70)
+
+
+
+
+
+
+package com.tcs.bancs.microservices;
+
+import com.tcs.bancs.microservices.Balance_Enquery.JVMBE;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400InpAccountNumber;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400InpEnqType;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400OutputResponse;
+
+public class AvailableBalance {
+
+    // Method to fetch balance from invm using the JVMBE object
+    private String getBalanceFromInvm(String accountNumber) {
+        try {
+            Thread.sleep(500); // Simulating delay
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Create new instances for each hit
+        JVMBE jvmbe = new JVMBE();
+        Ls400InpAccountNumber input1 = new Ls400InpAccountNumber();
+        Ls400InpEnqType input2 = new Ls400InpEnqType();
+        Ls400OutputResponse output1 = new Ls400OutputResponse();
+        Ls400OutputErrorNumber output2 = new Ls400OutputErrorNumber();
+
+        // Append "000000" to the account number
+        String modifiedAccountNumber = accountNumber + "000000";
+
+        // Null check for account number
+        if (modifiedAccountNumber == null || modifiedAccountNumber.trim().isEmpty()) {
+            System.err.println("Account number is null or empty.");
+            return "Error: Account number is invalid";
+        }
+
+        // Set account number and enquiry type
+        input1.setLs400InpAccountNumber(modifiedAccountNumber);
+        input2.setLs400InpEnqType("1");
+
+        // Log input data
+        System.out.println("Hitting JVM for account number: " + modifiedAccountNumber);
+
+        try {
+            // Call to JVMBE to fetch the balance
+            jvmbe.JVMBE(input1, input2, output2, output1);
+
+            // Check for error after calling JVMBE
+            if (!output2.getLs400OutputErrorNumber().equals("000000")) {
+                System.err.println("Error occurred: " + output2.getLs400OutputErrorNumber());
+                return "Error: " + output2.getLs400OutputErrorNumber();
+            }
+
+        } catch (Exception e) {
+            System.err.println("Exception during JVM hit: " + e.getMessage());
+            return "Exception: " + e.getMessage();
+        }
+
+        // Return the balance if no errors
+        return output1.getLs400OutputResponse();
+    }
+
+    // Main method and other logic here...
+}
