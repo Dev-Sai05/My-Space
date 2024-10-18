@@ -269,3 +269,102 @@ public class AccountBalanceParallel {
         executorService.shutdown();
     }
 }
+
+
+
+-------------------------------============================
+
+
+package com.tcs.bancs.microservices;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReferenceArray;
+
+import com.tcs.bancs.microservices.Balance_Enquery.JVMBE;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400InpAccountNumber;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400InpEnqType;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400OutputResponse;
+
+public class AvailableBalance {
+
+    private static final int THREAD_POOL_SIZE = Runtime.getRuntime().availableProcessors() * 15;
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+
+    // Method to fetch balance from invm using the JVMTEST object
+    private String getBalanceFromInvm(String accountNumber) {
+        try {
+            Thread.sleep(500); // Simulating delay
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Each thread gets its own instances of Lsacctnumber and Lsoutacctnumber
+       JVMBE jvmbe = new JVMBE();
+       Ls400InpAccountNumber input1 = new Ls400InpAccountNumber();
+       Ls400InpEnqType input2 = new Ls400InpEnqType();
+       Ls400OutputResponse output1 = new Ls400OutputResponse();
+       Ls400OutputErrorNumber output2 = new Ls400OutputErrorNumber();
+
+        input1.setLs400InpAccountNumber(accountNumber);
+        input2.setLs400InpEnqType("1");
+        jvmbe.JVMBE(input1, input2, output2, output1);
+        return output1.getLs400OutputResponse();
+    }
+
+    // Function to split the long account number string into individual account numbers
+    public static List<String> splitAccountNumbers(String accountNumbers, int lengthOfEachAccount) {
+        return List.of(accountNumbers.split("(?<=\\G.{" + lengthOfEachAccount + "})"));
+    }
+
+    public static void main(String[] args) {
+        // Create an instance of AccountBalanceParallel
+        AvailableBalance obj = new AvailableBalance();
+
+        // Your input string with account numbers
+        String accountNumbersString = "9705826589197058265892";
+
+        // Split the string into account numbers
+        List<String> accountNumbers = splitAccountNumbers(accountNumbersString, 11);
+
+        // Create an AtomicReferenceArray to store balances with sequence numbers
+        AtomicReferenceArray<String> balances = new AtomicReferenceArray<>(accountNumbers.size());
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        // AtomicInteger to keep track of sequence
+        AtomicInteger sequence = new AtomicInteger(0);
+
+        // Submit tasks for parallel execution
+        for (int i = 0; i < accountNumbers.size(); i++) {
+            final int index = i;
+            CompletableFuture<Void> future = CompletableFuture.supplyAsync(() -> {
+                int seqNumber = sequence.incrementAndGet(); // Get the sequence number
+                String balance = obj.getBalanceFromInvm(accountNumbers.get(index)); // Use obj to call non-static method
+                String result = "Sequence: " + seqNumber + ", Account: " + accountNumbers.get(index) + ", Balance: " + balance;
+                balances.set(index, result); // Store the result at the correct index
+                return result;
+            }, executorService).thenAccept(result -> {
+                // Any post-processing can be done here if needed
+            });
+            futures.add(future);
+        }
+
+        // Wait for all tasks to complete
+        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        allOf.join(); // This blocks until all futures are done
+
+        // Print all balances in sequence order
+        for (int i = 0; i < balances.length(); i++) {
+            System.out.println(balances.get(i));
+        }
+
+        // Shutdown the executor service
+        executorService.shutdown();
+    }
+}
