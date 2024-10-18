@@ -66,3 +66,79 @@ public class AvailableBalance {
         }
     }
 }
+
+
+
+666666666666667777
+
+package com.tcs.bancs.microservices;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+
+import com.tcs.bancs.microservices.Balance_Enquery.JVMBE;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400InpAccountNumber;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400InpEnqType;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.Balance_Enquery.Ls400OutputResponse;
+
+public class AvailableBalance {
+
+    // Method to fetch balance from invm using the JVMBE object
+    private String getBalanceFromInvm(String accountNumber) {
+        try {
+            Thread.sleep(500); // Simulating delay
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Instances of the classes to interact with JVMBE
+        JVMBE jvmbe = new JVMBE();
+        Ls400InpAccountNumber input1 = new Ls400InpAccountNumber();
+        Ls400InpEnqType input2 = new Ls400InpEnqType();
+        Ls400OutputResponse output1 = new Ls400OutputResponse();
+        Ls400OutputErrorNumber output2 = new Ls400OutputErrorNumber();
+
+        // Append "000000" to the account number
+        String modifiedAccountNumber = accountNumber + "000000";
+
+        // Set account number and enquiry type
+        input1.setLs400InpAccountNumber(modifiedAccountNumber);
+        input2.setLs400InpEnqType("1");
+
+        // Call to JVMBE to fetch the balance
+        jvmbe.JVMBE(input1, input2, output2, output1);
+        
+        return output1.getLs400OutputResponse(); // Return the balance
+    }
+
+    // Function to split the long account number string into individual account numbers
+    public static List<String> splitAccountNumbers(String accountNumbers, int lengthOfEachAccount) {
+        return List.of(accountNumbers.split("(?<=\\G.{" + lengthOfEachAccount + "})"));
+    }
+
+    public static void main(String[] args) {
+        // Create an instance of AvailableBalance
+        AvailableBalance obj = new AvailableBalance();
+
+        // Your input string with account numbers
+        String accountNumbersString = "9705826589197058265892";
+
+        // Split the string into account numbers
+        List<String> accountNumbers = splitAccountNumbers(accountNumbersString, 11);
+
+        // AtomicInteger to keep track of sequence
+        AtomicInteger sequence = new AtomicInteger(0);
+
+        // Sequentially fetch balances and print output
+        for (int i = 0; i < accountNumbers.size(); i++) {
+            int seqNumber = sequence.incrementAndGet(); // Get the sequence number
+            String balance = obj.getBalanceFromInvm(accountNumbers.get(i)); // Fetch the balance
+            String result = "Sequence: " + seqNumber + ", Account: " + accountNumbers.get(i) + "000000" + ", Balance: " + balance;
+            
+            // Print the result immediately after fetching
+            System.out.println(result);
+        }
+    }
+}
