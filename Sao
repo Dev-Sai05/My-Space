@@ -267,3 +267,24 @@ public class PFEnquiryService_Child {
         String errno; // Error number returned by the service
     }
 }
+
+
+
+=================================================================
+
+
+		    if (requestedNoOfRecords > 999) {
+		         errno = "VC013";
+		         errDesc = error.getProperty(errno);
+		         if(errDesc == null || errDesc.trim().equals("")) {
+			    		logger.error("Error Description Not Found!");
+			    		finalResponse = errobj.getErrorResponse("VC015", "Java error description not found", refno, tellerno, branchno);
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+			    	}
+			    	else {
+		         finalResponse = errobj.getErrorResponse(errno, errDesc, refno, tellerno, branchno);
+		        migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbean.toString()).getBytes()),
+		                        remoteAddress, tellerno, refno, serviceno, entryDate, IPAddress, errno, errDesc);
+		        return new ResponseEntity<>(finalResponse, HttpStatus.OK);
+			    	}
+		    }
