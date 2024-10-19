@@ -117,3 +117,153 @@ public class PFEnquiryService_Child {
     }
 
 }
+
+
+
+#########################
+
+//*****************************************************************
+//                 PROGRAM - PFEnquiryService_Child.Java
+//*****************************************************************
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS
+//----------------------------------------------------------------*
+// Naga Sai Ganesh : 15/10/2024    : 24090001  :  MICROSERVICES
+//----------------------------------------------------------------*
+
+package com.tcs.bancs.microservices.services;
+
+import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.concurrent.*;
+
+// Importing the required classes from the JVM service (likely COBOL to Java interaction)
+import com.tcs.bancs.microservices.jvm.scpf.JVMPF;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfBranchNumber;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfTellerNo;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfNumber;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfCustomerNo;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfDataOut;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfErrorMsgNo;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfRowcount;
+
+public class PFEnquiryService_Child {
+
+    // Logger for logging information and errors
+    Logger logger = LoggerFactory.getLogger(PFEnquiryService_Child.class);
+    
+    // Object to invoke the PF Enquiry functionality in the JVM service
+    JVMPF jvmpf = new JVMPF();
+
+    // Method that calls the PF Enquiry service
+    public List<String> callPFEnquiryChild(String branchno, String tellerno, String pfno, String cifno, int requestedNumberOfRecords, String lastrow) throws InterruptedException, ExecutionException {
+        
+        logger.info("VC------------------------PF Enquiry Child Service Started------------------------VC");
+        
+        // Initialize the row count from the last row received, starting from 0 if it's null
+        int Rowcount = lastrow == null ? 0 : Integer.parseInt(lastrow) + 1;
+        
+        // Determine how many records to fetch, defaulting to 10 if none is specified
+        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 10;
+
+        // List to store the future results of asynchronous tasks
+        List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
+
+        // A custom thread pool is created with 25 threads for parallel processing
+        ForkJoinPool customThreadPool = new ForkJoinPool(25);
+
+        int fetchedRecordsCount = 0; // To keep track of how many records have been fetched
+        StringBuilder allRecordsBuilder = new StringBuilder(); // To store the final response
+
+        // Loop to fetch records asynchronously until the desired number is fetched
+        while (fetchedRecordsCount < numberOfRecordsToFetch) {
+
+            final int currentRowcount = Rowcount; // Capturing current row count for thread-safe execution
+
+            // Asynchronous task to fetch data using the JVMPF service
+            CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
+                
+                // Initializing the input objects for the JVMPF service call
+                LsPfBranchNumber pfinput1 = new LsPfBranchNumber();
+                LsPfTellerNo pfinput2 = new LsPfTellerNo();
+                LsPfNumber pfinput3 = new LsPfNumber();
+                LsPfCustomerNo pfinput4 = new LsPfCustomerNo();
+                
+                // Initializing the output objects to capture the response from JVMPF
+                LsPfDataOut pfoutput1 = new LsPfDataOut();
+                LsPfErrorMsgNo pfoutput2 = new LsPfErrorMsgNo();
+                LsPfRowcount pfoutput3 = new LsPfRowcount();
+
+                // Setting the input parameters to the values provided
+                pfinput1.setLsPfBranchNumber(String.format("%016d", Integer.parseInt(branchno))); // Branch number
+                pfinput2.setLsPfTellerNo(String.format("%016d", Integer.parseInt(tellerno))); // Teller number
+                pfinput3.setLsPfNumber(pfno); // PF number
+                
+                // Setting the current row count to fetch the data from the correct position
+                pfoutput3.setLsPfRowcount(currentRowcount);
+
+                // Calling the JVMPF service to fetch the data
+                jvmpf.JVMPF(pfinput1, pfinput2, pfinput3, pfinput4, pfoutput1, pfoutput2, pfoutput3);
+                
+                // Creating a ResponseData object to store the results
+                ResponseData responseData = new ResponseData();
+                responseData.outResponse = pfoutput1.getLsPfDataOut(); // Data fetched
+                responseData.errno = pfoutput2.getLsPfErrorMsgNo(); // Error number
+                responseData.rowcount = pfoutput3.getLsPfRowcount() + 1; // Updated row count
+                
+                return responseData; // Returning the response data for further processing
+                
+            }, customThreadPool); // Executing the task in the custom thread pool
+
+            // Adding the future task to the list
+            futures.add(future);
+
+            // Fetching the result of the last future task (blocking until the task is complete)
+            ResponseData lastResult = futures.get(futures.size() - 1).get();
+
+            // Check if no data was returned by the service
+            if (lastResult.outResponse == null || lastResult.outResponse.trim().isEmpty()) {
+                logger.error("No outResponse from JVMSCPF. Terminating process.");
+                break; // Exit the loop if no data is received
+            }
+
+            // Updating the row count for the next iteration
+            Rowcount = lastResult.rowcount;
+
+            // Extracting the output response
+            String outResponse = lastResult.outResponse;
+
+            // Initializing indices for splitting the response into 142-character records
+            int startIndex = 0;
+            int endIndex = 0;
+
+            // Loop to split the response into 142-character records until the required number of records is fetched
+            while (startIndex + 142 <= outResponse.length() && fetchedRecordsCount < numberOfRecordsToFetch) {
+                endIndex = startIndex + 142;
+                allRecordsBuilder.append(outResponse.substring(startIndex, endIndex)); // Append each record
+                startIndex = endIndex;
+                fetchedRecordsCount++; // Increment the fetched record count
+            }
+        }
+
+        // Creating a list to store the final response
+        List<String> res = new ArrayList<>();
+        res.add(allRecordsBuilder.toString()); // Adding all fetched records
+        res.add(String.valueOf(fetchedRecordsCount)); // Adding the number of records fetched
+        res.add(futures.get(futures.size() - 1).get().errno); // Adding the error number from the last task
+
+        logger.info("VC------------------------PF Enquiry Child Service Ended------------------------VC");
+        
+        // Shutting down the custom thread pool after execution
+        customThreadPool.shutdown();
+
+        return res; // Returning the response as a list of strings
+    }
+
+    // Private inner class to store the response data for each task
+    private class ResponseData {
+        int rowcount; // Row count for the data fetched
+        String outResponse; // Data fetched from the service
+        String errno; // Error number returned by the service
+    }
+}
