@@ -1,0 +1,138 @@
+package com.tcs.bancs.microservices.services;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.sun.management.OperatingSystemMXBean;  // For advanced system stats (CPU and memory)
+import com.tcs.bancs.microservices.jvm.scpf.JVMPF;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfBranchNumber;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfTellerNo;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfNumber;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfCustomerNo;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfDataOut;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfErrorMsgNo;
+import com.tcs.bancs.microservices.jvm.scpf.LsPfRowcount;
+
+public class PFEnquiryService_Child {
+
+    Logger logger = LoggerFactory.getLogger(PFEnquiryService_Child.class);
+    JVMPF jvmpf = new JVMPF();
+    
+    // AtomicBoolean to track cancellation status
+    private AtomicBoolean isCancelled = new AtomicBoolean(false);
+
+    long startTime, endTime;
+
+    // Method to cancel the transaction
+    public void cancelTransaction() {
+        isCancelled.set(true);  // Set the flag to true when cancel is triggered
+        logger.info("Transaction cancellation requested.");
+    }
+
+    public List<String> callPFEnquiryChild(String branchno, String tellerno, String pfno, String cifno, int requestedNumberOfRecords, String lastrow) throws InterruptedException, ExecutionException {
+
+        logger.info("VC------------------------PF Enquiry Child Service Started------------------------VC");
+
+        int Rowcount = lastrow == null ? 0 : Integer.parseInt(lastrow) + 1;
+        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 10;
+
+        List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
+        ForkJoinPool customThreadPool = new ForkJoinPool(25);
+
+        int fetchedRecordsCount = 0;
+        StringBuilder allRecordsBuilder = new StringBuilder();
+
+        // Get OperatingSystemMXBean instance for CPU and memory monitoring
+        com.sun.management.OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+        while (fetchedRecordsCount < numberOfRecordsToFetch) {
+
+            // Check if the transaction has been cancelled
+            if (isCancelled.get()) {
+                logger.info("Transaction cancelled. Stopping further processing.");
+                break;  // Exit the loop if cancellation is requested
+            }
+
+            final int currentRowcount = Rowcount;
+
+            CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
+                LsPfBranchNumber pfinput1 = new LsPfBranchNumber();
+                LsPfTellerNo pfinput2 = new LsPfTellerNo();
+                LsPfNumber pfinput3 = new LsPfNumber();
+                LsPfCustomerNo pfinput4 = new LsPfCustomerNo();
+                LsPfDataOut pfoutput1 = new LsPfDataOut();
+                LsPfErrorMsgNo pfoutput2 = new LsPfErrorMsgNo();
+                LsPfRowcount pfoutput3 = new LsPfRowcount();
+
+                pfinput1.setLsPfBranchNumber(String.format("%016d", Integer.parseInt(branchno)));
+                pfinput2.setLsPfTellerNo(String.format("%016d", Integer.parseInt(tellerno)));
+                pfinput3.setLsPfNumber(pfno);
+                pfoutput3.setLsPfRowcount(currentRowcount);
+                
+                startTime = System.nanoTime();
+                jvmpf.JVMPF(pfinput1, pfinput2, pfinput3, pfinput4, pfoutput1, pfoutput2, pfoutput3);
+                endTime = System.nanoTime();
+                
+                logger.info("JVMPF call duration time : " + (endTime - startTime) / 1_000_000 + " ms");
+
+                // Monitor CPU and Memory usage
+                double cpuLoad = osBean.getProcessCpuLoad() * 100;
+                long usedMemory = (osBean.getTotalPhysicalMemorySize() - osBean.getFreePhysicalMemorySize()) / (1024 * 1024); // in MB
+                long freeMemory = osBean.getFreePhysicalMemorySize() / (1024 * 1024); // in MB
+                long totalMemory = osBean.getTotalPhysicalMemorySize() / (1024 * 1024); // in MB
+                
+                logger.info(String.format("CPU Load: %.2f%%, Used Memory: %d MB, Free Memory: %d MB, Total Memory: %d MB",
+                        cpuLoad, usedMemory, freeMemory, totalMemory));
+
+                ResponseData responseData = new ResponseData();
+                responseData.outResponse = pfoutput1.getLsPfDataOut();
+                responseData.errno = pfoutput2.getLsPfErrorMsgNo();
+                responseData.rowcount = pfoutput3.getLsPfRowcount() + 1;
+                return responseData;
+            }, customThreadPool);
+
+            futures.add(future);
+
+            ResponseData lastResult = futures.get(futures.size() - 1).get();
+
+            if (lastResult.outResponse == null || lastResult.outResponse.trim().isEmpty()) {
+                logger.error("No outResponse from JVMSCPF. Terminating process.");
+                break;
+            }
+
+            Rowcount = lastResult.rowcount;
+            String outResponse = lastResult.outResponse;
+            int startIndex = 0;
+            int endIndex = 0;
+
+            while (startIndex + 142 <= outResponse.length() && fetchedRecordsCount < numberOfRecordsToFetch) {
+                endIndex = startIndex + 142;
+                allRecordsBuilder.append(outResponse.substring(startIndex, endIndex));
+                startIndex = endIndex;
+                fetchedRecordsCount++;
+            }
+        }
+
+        List<String> res = new ArrayList<>();
+        res.add(allRecordsBuilder.toString());
+        res.add(String.valueOf(fetchedRecordsCount));
+        res.add(futures.get(futures.size() - 1).get().errno);
+
+        logger.info("VC------------------------PF Enquiry Child Service Ended------------------------VC");
+
+        customThreadPool.shutdown();
+        return res;
+    }
+
+    private class ResponseData {
+        int rowcount;
+        String outResponse;
+        String errno;
+    }
+}
