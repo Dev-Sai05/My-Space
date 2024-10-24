@@ -1,7 +1,6 @@
 package com.tcs.bancs.microservices.services;
 
 import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,6 +50,9 @@ public class PFEnquiryService_Child {
         // Get OperatingSystemMXBean instance for CPU and memory monitoring
         com.sun.management.OperatingSystemMXBean osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
 
+        long previousCpuTime = osBean.getProcessCpuTime();
+        long previousUptime = System.nanoTime();
+
         while (fetchedRecordsCount < numberOfRecordsToFetch) {
 
             // Check if the transaction has been cancelled
@@ -81,15 +83,6 @@ public class PFEnquiryService_Child {
                 
                 logger.info("JVMPF call duration time : " + (endTime - startTime) / 1_000_000 + " ms");
 
-                // Monitor CPU and Memory usage
-                double cpuLoad = osBean.getProcessCpuLoad() * 100;
-                long usedMemory = (osBean.getTotalPhysicalMemorySize() - osBean.getFreePhysicalMemorySize()) / (1024 * 1024); // in MB
-                long freeMemory = osBean.getFreePhysicalMemorySize() / (1024 * 1024); // in MB
-                long totalMemory = osBean.getTotalPhysicalMemorySize() / (1024 * 1024); // in MB
-                
-                logger.info(String.format("CPU Load: %.2f%%, Used Memory: %d MB, Free Memory: %d MB, Total Memory: %d MB",
-                        cpuLoad, usedMemory, freeMemory, totalMemory));
-
                 ResponseData responseData = new ResponseData();
                 responseData.outResponse = pfoutput1.getLsPfDataOut();
                 responseData.errno = pfoutput2.getLsPfErrorMsgNo();
@@ -117,6 +110,25 @@ public class PFEnquiryService_Child {
                 startIndex = endIndex;
                 fetchedRecordsCount++;
             }
+
+            // Calculate real-time CPU usage
+            long currentCpuTime = osBean.getProcessCpuTime();
+            long currentUptime = System.nanoTime();
+            long elapsedCpu = currentCpuTime - previousCpuTime;
+            long elapsedTime = currentUptime - previousUptime;
+
+            int availableProcessors = osBean.getAvailableProcessors();
+            double cpuUsage = Math.min(99F, (elapsedCpu / (elapsedTime * 1000000F * availableProcessors)) * 100);
+            previousCpuTime = currentCpuTime;
+            previousUptime = currentUptime;
+
+            // Log CPU and memory usage
+            long usedMemory = (osBean.getTotalPhysicalMemorySize() - osBean.getFreePhysicalMemorySize()) / (1024 * 1024); // in MB
+            long freeMemory = osBean.getFreePhysicalMemorySize() / (1024 * 1024); // in MB
+            long totalMemory = osBean.getTotalPhysicalMemorySize() / (1024 * 1024); // in MB
+
+            logger.info(String.format("Real-Time CPU Usage: %.2f%%, Used Memory: %d MB, Free Memory: %d MB, Total Memory: %d MB",
+                    cpuUsage, usedMemory, freeMemory, totalMemory));
         }
 
         List<String> res = new ArrayList<>();
