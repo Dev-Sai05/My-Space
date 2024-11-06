@@ -147,3 +147,24 @@
 016600         DISPLAY "No active connection to unbind."
 016700     END-IF
 016800     EXIT.
+
+
+
+import com.zaxxer.hikari.HikariDataSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class DataSourceController {
+
+    @Autowired
+    private HikariDataSource dataSource;
+
+    @GetMapping("/pool-stats")
+    public String poolStats() {
+        return "Active Connections: " + dataSource.getHikariPoolMXBean().getActiveConnections() +
+               ", Idle Connections: " + dataSource.getHikariPoolMXBean().getIdleConnections() +
+               ", Total Connections: " + dataSource.getHikariPoolMXBean().getTotalConnections();
+    }
+}
