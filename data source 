@@ -1,0 +1,124 @@
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import javax.sql.DataSource;
+import com.zaxxer.hikari.HikariDataSource;
+
+@Configuration
+public class DataSourceConfig {
+
+    // Day Database Configuration
+    @Primary
+    @Bean(name = "dayDataSource")
+    @ConfigurationProperties(prefix = "day.datasource")
+    public DataSource dayDataSource() {
+        return new HikariDataSource();
+    }
+
+    // Night Database Configuration
+    @Bean(name = "nightDataSource")
+    @ConfigurationProperties(prefix = "night.datasource")
+    public DataSource nightDataSource() {
+        return new HikariDataSource();
+    }
+
+    // Ref Database Configuration
+    @Bean(name = "refDataSource")
+    @ConfigurationProperties(prefix = "ref.datasource")
+    public DataSource refDataSource() {
+        return new HikariDataSource();
+    }
+}
+
+
+
+
+
+-----------------------
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+@Service
+public class DatabaseService {
+
+    @Autowired
+    @Qualifier("dayDataSource")
+    private DataSource dayDataSource;
+
+    @Autowired
+    @Qualifier("nightDataSource")
+    private DataSource nightDataSource;
+
+    @Autowired
+    @Qualifier("refDataSource")
+    private DataSource refDataSource;
+
+    public void performDatabaseOperation(String dbType) {
+        DataSource dataSource = getDataSource(dbType);
+
+        try (Connection connection = dataSource.getConnection()) {
+            // Perform operations with the connection
+            System.out.println("Connected to " + dbType + " database.");
+            // Example: COBOL code could receive a connection string here, if needed
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private DataSource getDataSource(String dbType) {
+        switch (dbType) {
+            case "day":
+                return dayDataSource;
+            case "night":
+                return nightDataSource;
+            case "ref":
+                return refDataSource;
+            default:
+                throw new IllegalArgumentException("Unsupported database type: " + dbType);
+        }
+    }
+}
+
+
+
+------------
+
+
+# HikariCP settings for day database
+day.datasource.hikari.maximum-pool-size=10
+day.datasource.hikari.minimum-idle=5
+day.datasource.hikari.idle-timeout=600000
+day.datasource.hikari.connection-timeout=30000
+day.datasource.hikari.max-lifetime=1800000
+
+# HikariCP settings for night database
+night.datasource.hikari.maximum-pool-size=10
+night.datasource.hikari.minimum-idle=5
+night.datasource.hikari.idle-timeout=600000
+night.datasource.hikari.connection-timeout=30000
+night.datasource.hikari.max-lifetime=1800000
+
+# HikariCP settings for ref database
+ref.datasource.hikari.maximum-pool-size=10
+ref.datasource.hikari.minimum-idle=5
+ref.datasource.hikari.idle-timeout=600000
+ref.datasource.hikari.connection-timeout=30000
+ref.datasource.hikari.max-lifetime=1800000
+
+
+# Actuator endpoint configuration
+management.endpoints.web.exposure.include=health,info,metrics,env
+management.endpoint.health.show-details=always
+management.health.db.enabled=true
+management.endpoint.shutdown.enabled=true
+management.endpoint.metrics.enabled=true
+management.endpoint.env.enabled=true
+management.endpoint.health.enabled=true
