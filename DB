@@ -1,0 +1,218 @@
+//    SBI Core Banking Project, Hyderabad, India.       *
+//*****************************************************************
+//                                                                *
+//  	           PROGRAM - DBConnection.java                    *
+//                                                                *
+//*****************************************************************
+//                 P R O G R A M    H I S T O R Y                 *
+//                                                                *
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+//----------------------------------------------------------------*
+// Niharika Tammana: 02/09/2024    : 24090001  :  MICROSERVICES   *
+//----------------------------------------------------------------*
+package com.tcs.bancs.microservices.java.dbconnection;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import com.tcs.bancs.microservices.jvm.dbconnection.JVMUTENV;
+import com.tcs.bancs.microservices.jvm.dbconnection.JvmLsCallCode;
+import com.tcs.bancs.microservices.jvm.dbconnection.JvmLsEnvRecordArea;
+import com.tcs.bancs.microservices.jvm.dbconnection.JvmLsOptCode;
+
+@Component
+public class DBConnection {
+	
+	Logger logger = LoggerFactory.getLogger(DBConnection.class);
+	
+	@Value("${UTENVCALS-DEF-RMODE}")
+	private String dbmode;
+	
+    @Value("${day.datasource.jdbc-url}")
+    private String dayJdbcUrl;
+	
+    @Value("${day.datasource.username}")
+    private String dayUsername;
+
+    @Value("${day.datasource.password}")
+    private String dayPassword;
+    
+    @Value("${day.datasource.driver-class-name}")
+    private String dayDriverClass;
+    
+    @Value("${night.datasource.jdbc-url}")
+    private String nightJdbcUrl;
+
+    @Value("${night.datasource.username}")
+    private String nightUsername;
+
+    @Value("${night.datasource.password}")
+    private String nightPassword;
+    
+    @Value("${night.datasource.driver-class-name}")
+    private String nightDriverClass;
+    
+	JVMUTENV 			jvmenv = new JVMUTENV();
+	JvmLsCallCode 		callCode = new JvmLsCallCode();
+	JvmLsOptCode 		optcode = new JvmLsOptCode();
+	JvmLsEnvRecordArea 	commonarea = new JvmLsEnvRecordArea();
+	
+    DBConnection_Child	dbobj	=	new DBConnection_Child();
+    
+    public String getCBSDBConnection(String dbcallCode,String inpcallCode, String inpoptcode, String inpcommonarea) throws InvalidDataSourceFormatException{
+
+    	logger.info("Trying to connect to CBS DB...");
+    	
+		String cbsDBAllowFlag = "N";
+		String dbtype       = new String();
+		String jdbcUrl      = new String();
+		String username     = new String();
+		String password     = new String();
+		String driverClass = new String();
+
+        try {
+	        dbtype = getDbType(dbmode);
+	        jdbcUrl = getJdbcUrl(dbtype);
+	        username = getUsername(dbtype);
+	        password = getPassword(dbtype);
+	        driverClass = getDriverClass(dbtype);
+        } catch(InvalidDataSourceFormatException e) {
+        	logger.error("dbconnection : Error in the fetched datasource type");
+        	return cbsDBAllowFlag;
+        }
+        
+		callCode.setJvmLsCallCode(inpcallCode);
+		optcode.setJvmLsOptCode(inpoptcode);
+	    commonarea.setJvmLsEnvRecordArea(inpcommonarea);
+		jvmenv.JVMUTENV(callCode, optcode, commonarea);
+        
+        String connectionString = jdbcUrl.split("@")[0] + username + "/" + password + "@" + jdbcUrl.split("@")[1];
+
+        String denyFlag = dbobj.callJVM(dbcallCode, connectionString, driverClass);
+
+	        if(denyFlag.equals("N")) {
+	        	cbsDBAllowFlag = "Y";
+	        }	        
+
+		return cbsDBAllowFlag;
+	  }
+	
+	  private String getDbType(String flag) {
+		  
+		  if(flag.equalsIgnoreCase("D") || flag.equalsIgnoreCase("T")) {
+			  return "day";			  
+		  }
+		  else if(flag.equalsIgnoreCase("N")) {
+			  return "night";
+		  }
+		  else {
+          	logger.error("dbconnection : Unsupported datasource type");
+            throw new InvalidDataSourceFormatException("Unsupported datasource type");
+		  }
+	  }
+	  private String getDriverClass(String type) {
+	        switch (type) {
+            case "day":
+                return dayDriverClass;
+            case "night":
+                return nightDriverClass;
+            default:
+            	logger.error("dbconnection : Unsupported datasource type");
+                throw new InvalidDataSourceFormatException("Unsupported datasource type");
+        }
+	  }
+
+	public String getJdbcUrl(String type) {
+	        switch (type) {
+	            case "day":
+	                return dayJdbcUrl;
+	            case "night":
+	                return nightJdbcUrl;
+	            default:
+	            	logger.error("dbconnection : Unsupported datasource type");
+	                throw new InvalidDataSourceFormatException("Unsupported datasource type");
+	        }
+	  }
+
+	  public String getUsername(String type) {
+	        switch (type) {
+	            case "day":
+	                return dayUsername;
+	            case "night":
+	                return nightUsername;
+	            default:
+	            	logger.error("dbconnection : Unsupported datasource type");
+	                throw new InvalidDataSourceFormatException("Unsupported datasource type");
+	        }
+	  }
+		
+	  public String getPassword(String type) { 
+			  switch (type) { 
+			  case "day": 
+				  return dayPassword; 
+			  case "night": 
+				  return nightPassword;  
+			  default: 
+				  logger.error("dbconnection : Unsupported datasource type");
+				  throw new InvalidDataSourceFormatException("Unsupported datasource type");
+	        }
+	  } 	  
+}
+
+
+
+
+
+
+
+
+
+
+===========================
+
+
+
+//    SBI Core Banking Project, Hyderabad, India.       *
+//*****************************************************************
+//                                                                *
+//  	           PROGRAM - DBConnection.java                    *
+//                                                                *
+//*****************************************************************
+//                 P R O G R A M    H I S T O R Y                 *
+//                                                                *
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+//----------------------------------------------------------------*
+// Niharika Tammana: 02/09/2024    : 24090001  :  MICROSERVICES   *
+//----------------------------------------------------------------*
+package com.tcs.bancs.microservices.java.dbconnection;
+
+import com.tcs.bancs.microservices.jvm.dbconnection.VCMISC;
+import com.tcs.bancs.microservices.jvm.dbconnection.LsVcmiscCallCode;
+import com.tcs.bancs.microservices.jvm.dbconnection.LsVcmiscConnectionUrl;
+import com.tcs.bancs.microservices.jvm.dbconnection.LsVcmiscDriverClass;
+import com.tcs.bancs.microservices.jvm.dbconnection.LsVcmiscErrorFlag;
+
+public class DBConnection_Child {
+
+	VCMISC					vcmisc	=	new VCMISC();
+	LsVcmiscCallCode		input1	=	new LsVcmiscCallCode();
+	LsVcmiscConnectionUrl	input2	=	new LsVcmiscConnectionUrl();
+	LsVcmiscDriverClass		input3	= new LsVcmiscDriverClass();
+	LsVcmiscErrorFlag		output	= new LsVcmiscErrorFlag();
+	
+	public String callJVM(String callcode, String connectionurl, String driverclass) {
+		
+		String denyflag = "";
+		
+		input1.setLsVcmiscCallCode(callcode);
+		input2.setLsVcmiscConnectionUrl(connectionurl);
+		input3.setLsVcmiscDriverClass(driverclass);
+		vcmisc.VCMISC(input1, input2, input3, output);
+		
+		denyflag = output.getLsVcmiscErrorFlag();	
+		
+		return denyflag;
+	}
+}
