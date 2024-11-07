@@ -168,3 +168,26 @@ public class DataSourceController {
                ", Total Connections: " + dataSource.getHikariPoolMXBean().getTotalConnections();
     }
 }
+
+
+
+A002-CONNECT-PARA.
+    DISPLAY "Attempting to bind connection..."
+    DISPLAY "Connection Descriptor: " LS-CONNECTION-DS.
+
+    EXEC SQL 
+        BIND CONNECTION conn TO :LS-CONNECTION-DS
+    END-EXEC
+
+    MOVE SQLCODE TO WA-SQLCODE
+
+    IF WA-SQLCODE = ZEROES
+        MOVE "N" TO LS-VCMISC-ERROR-FLAG
+        MOVE "Y" TO WA-VCMISC-CONNECTION-STATUS
+        DISPLAY "VCMISC(A002): BIND SUCCESSFUL, SQLCODE=" SQLCODE
+    ELSE
+        MOVE "Y" TO LS-VCMISC-ERROR-FLAG
+        DISPLAY "VCMISC(A002): BIND FAILURE, SQLCODE=" SQLCODE
+        DISPLAY "Error Code 19707 encountered. Possible invalid connection descriptor."
+        DISPLAY "Check connection pool and descriptor initialization."
+    END-IF.
