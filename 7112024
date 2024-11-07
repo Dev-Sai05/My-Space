@@ -144,3 +144,127 @@ if(dbcallCode.equals("01")) {
 	  }
 }
 }
+
+
+
+
+
+package com.tcs.bancs.microservices.java.dbconnection;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import com.tcs.bancs.microservices.config.CBSDayDbConfig;
+import com.tcs.bancs.microservices.config.CBSNightDbConfig;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class DBConnection {
+
+    @Autowired
+    @Qualifier("dayDataSource")
+    private DataSource dayDataSource;
+
+    @Autowired
+    @Qualifier("nightDataSource")
+    private DataSource nightDataSource;
+
+    @Value("${UTENVCALS-DEF-RMODE}")
+    private String dbmode;
+
+    private DBConnection_Child dbobj = new DBConnection_Child();
+    private Logger logger = LoggerFactory.getLogger(DBConnection.class);
+
+    private Connection conn = null;
+
+    public String getCBSDBConnection(String dbcallCode, String inpcallCode, String inpoptcode, String inpcommonarea) 
+            throws InvalidDataSourceFormatException, SQLException {
+
+        String cbsDBAllowFlag = "N";
+        String dbtype;
+        String denyFlag = "N";
+
+        logger.info("Starting getCBSDBConnection for dbcallCode: {}", dbcallCode);
+
+        try {
+            dbtype = getDbType(dbmode);
+            logger.info("Database type determined from dbmode ({}): {}", dbmode, dbtype);
+        } catch (InvalidDataSourceFormatException e) {
+            logger.error("Error determining datasource type with dbmode: {}", dbmode, e);
+            return cbsDBAllowFlag;
+        }
+
+        if (conn != null && !conn.isClosed()) {
+            logger.info("Connection is already open.");
+        } else {
+            logger.warn("Connection is either null or closed, establishing a new connection.");
+            conn = performDatabaseOperation(dbtype);
+        }
+
+        if ("01".equals(dbcallCode)) {
+            if (conn != null) {
+                logger.info("Calling JVM with dbcallCode: {}", dbcallCode);
+                denyFlag = dbobj.callJVM(dbcallCode, conn);
+            } else {
+                logger.warn("Connection is null; JVM call skipped.");
+            }
+
+            if ("N".equals(denyFlag)) {
+                cbsDBAllowFlag = "Y";
+                logger.info("DB access allowed. CBSDBAllowFlag set to: {}", cbsDBAllowFlag);
+            } else {
+                logger.info("DB access denied by JVM call. CBSDBAllowFlag remains: {}", cbsDBAllowFlag);
+            }
+        }
+
+        logger.info("getCBSDBConnection completed with CBSDBAllowFlag: {}", cbsDBAllowFlag);
+        return cbsDBAllowFlag;
+    }
+
+    public Connection performDatabaseOperation(String dbType) {
+        DataSource dataSource = getDataSource(dbType);
+        Connection connection = null;
+
+        try {
+            connection = dataSource.getConnection();
+            logger.info("Successfully connected to {} database. Connection: {}", dbType, connection);
+        } catch (SQLException e) {
+            logger.error("Failed to establish connection to {} database.", dbType, e);
+        }
+
+        return connection;
+    }
+
+    private DataSource getDataSource(String dbType) {
+        switch (dbType) {
+            case "day":
+                return dayDataSource;
+            case "night":
+                return nightDataSource;
+            default:
+                String errorMsg = "Unsupported database type: " + dbType;
+                logger.error(errorMsg);
+                throw new IllegalArgumentException(errorMsg);
+        }
+    }
+
+    private String getDbType(String flag) {
+        switch (flag.toUpperCase()) {
+            case "D":
+            case "T":
+                return "day";
+            case "N":
+                return "night";
+            default:
+                logger.error("Unsupported datasource type in getDbType with flag: {}", flag);
+                throw new InvalidDataSourceFormatException("Unsupported datasource type");
+        }
+    }
+}
