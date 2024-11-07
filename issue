@@ -1,0 +1,38 @@
+HELLO JDBC URL HikariProxyConnection@1443582052 wrapping oracle.jdbc.driver.T4CConnection@6ee15b37
+Attempting to bind connection.....
+Connection Descriptor: HikariProxyConnection@1443582052 wrapping oracle.jdbc.driver.T4CConnection@6ee15b37
+2024-11-07 19:30:12,872 INFO com.tcs.bancs.microservices.impl.MigenqDetailsRepositoryImpl [http-nio-10.243.6.71-1003-exec-5] VC------------------LOG DB Initial save done------------------VC
+||getCustomerDetails|2024-11-07 19:30:12,872 INFO com.tcs.bancs.microservices.services.PFMOBEnquiryService [http-nio-10.243.6.71-1003-exec-5] VC------------------------Initiating DB Connection------------------------VC
+||getCustomerDetails|Connection is valid and open.
+19:30:12.       | DBIO:(A100) FILE-INDEX, FILE-NUM, NO-DATA-SETS: 0433 0432 0430                                                          
+19:30:12.       | DBIO:(A100) FIRST ENTRY = AACH                                                                                          
+19:30:12.       | DBIODIST:(A000) F1-STAT    F1-FUNCT              F1-SQLCD 000000000                                                     
+19:30:12.       | DBIODIST:(A000) F1-ERRM                                                                        F1-ERRL 0000  F1-TABLE TX
+19:30:12.       | DBIODIST:(A000) F2-STAT ER F2-FUNCT READ         F2-SQLCD 000019702-                                                    
+19:30:12.       | DBIODIST:(A000) F2-ERRM                                                                        F2-ERRL 0000  F2-TABLE TX
+19:30:12.       | UT9000(D100):ERROR ACCESSING TXTM RECORD -  71 STATUS DBER                                                              
+19:30:12.       | CALL-CODE: 07 SOURCE-LENGTH:                                                                                            
+VCMISC(A002): BIND FAILURE, SQLCODE=-0000019702
+Error Code 19707 encountered. Possible invalid connection descriptor.
+Check connection pool and descriptor initialization.
+Attempting to bind connection.....
+Connection Descriptor: HikariProxyConnection@1443582052 wrapping oracle.jdbc.driver.T4CConnection@6ee15b37
+19:30:12.       |  INST-NO: 003 CALLING-ID: ERM    LANGUAGE-CODE:  01 REPORT-NO:  0000000000000155 SEQUENCE-NO: 0001                      
+2024-11-07 19:30:12,888 INFO com.tcs.bancs.microservices.services.ErrorResponse [http-nio-10.243.6.71-1003-exec-1] Fetching Error Response...
+||getCustomerDetails|2024-11-07 19:30:12,888 INFO com.tcs.bancs.microservices.services.FormatResponse [http-nio-10.243.6.71-1003-exec-1] Converted to json format
+||getCustomerDetails|2024-11-07 19:30:12,888 INFO com.tcs.bancs.microservices.services.ErrorResponse [http-nio-10.243.6.71-1003-exec-1] Fetched Error Response
+||getCustomerDetails|Hibernate: select migenq_t1x0_.PK_REQ_REF_NO as pk_req_ref_no1_0_0_, migenq_t1x0_.RECD_TIME as recd_time2_0_0_, migenq_t1x0_.CLIENT_IP as client_ip3_0_0_, migenq_t1x0_.ENTRY_DATE as entry_date4_0_0_, migenq_t1x0_.ERROR_CODE as error_code5_0_0_, migenq_t1x0_.ERROR_DESCRIPTION as error_description6_0_0_, migenq_t1x0_.REQ_STR as req_str7_0_0_, migenq_t1x0_.RESPONSE_STATUS as response_status8_0_0_, migenq_t1x0_.RESPONSE_STRING as response_string9_0_0_, migenq_t1x0_.RESP_STR as resp_str10_0_0_, migenq_t1x0_.RESP_TIME as resp_time11_0_0_, migenq_t1x0_.SRC_ID as src_id12_0_0_, migenq_t1x0_.TELLER_ID as teller_id13_0_0_, migenq_t1x0_.TXN_NAME as txn_name14_0_0_, migenq_t1x0_.TXN_NO as txn_no15_0_0_ from Migenq_t1 migenq_t1x0_ where migenq_t1x0_.PK_REQ_REF_NO=? and migenq_t1x0_.RECD_TIME=?
+VCMISC(A002): BIND SUCCESSFUL, SQLCODE=+0000000000
+19:30:12.       | VCMISC(A003) : COMMIT SUCCESSFUL +000000000                                                                             
+Hibernate: select migenq_t1x0_.PK_REQ_REF_NO as pk_req_ref_no1_0_0_, migenq_t1x0_.RECD_TIME as recd_time2_0_0_, migenq_t1x0_.CLIENT_IP as client_ip3_0_0_, migenq_t1x0_.ENTRY_DATE as entry_date4_0_0_, migenq_t1x0_.ERROR_CODE as error_code5_0_0_, migenq_t1x0_.ERROR_DESCRIPTION as error_description6_0_0_, migenq_t1x0_.REQ_STR as req_str7_0_0_, migenq_t1x0_.RESPONSE_STATUS as response_status8_0_0_, migenq_t1x0_.RESPONSE_STRING as response_string9_0_0_, migenq_t1x0_.RESP_STR as resp_str10_0_0_, migenq_t1x0_.RESP_TIME as resp_time11_0_0_, migenq_t1x0_.SRC_ID as src_id12_0_0_, migenq_t1x0_.TELLER_ID as teller_id13_0_0_, migenq_t1x0_.TXN_NAME as txn_name14_0_0_, migenq_t1x0_.TXN_NO as txn_no15_0_0_ from Migenq_t1 migenq_t1x0_ where migenq_t1x0_.PK_REQ_REF_NO=? and migenq_t1x0_.RECD_TIME=?
+19:30:12.       | VCMISC(A004) : ROLLBACK SUCCESSFUL +000000000                                                                           
+SUCCESS unbinded+0000000000
+unbind connection cobol
+FAILURE DISCONNECT-0000019999
+2024-11-07 19:30:12,919 INFO com.tcs.bancs.microservices.java.dbconnection.DBConnection_Child [http-nio-10.243.6.71-1003-exec-4] FlagY
+||getCustomerDetails|Connection is valid and open.
+2024-11-07 19:30:12,919 INFO com.tcs.bancs.microservices.java.dbconnection.DBConnection_Child [http-nio-10.243.6.71-1003-exec-4] connectionHikariProxyConnection@1443582052 wrapping oracle.jdbc.driver.T4CConnection@6ee15b37
+||getCustomerDetails|HELLO ROHITH DBCONNECTION 6
+HELLO JDBC URL HikariProxyConnection@1443582052 wrapping oracle.jdbc.driver.T4CConnection@6ee15b37
+OPTION 5 IN VCMISC
+FAILURE DISCONNECT-0000019702
