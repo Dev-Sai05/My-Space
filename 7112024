@@ -268,3 +268,135 @@ public class DBConnection {
         }
     }
 }
+
+
++++++++++
+
+//    SBI Core Banking Project, Hyderabad, India.       *
+//*****************************************************************
+//                                                                *
+//                     PROGRAM - DBConnection.java                    *
+//                                                                *
+//*****************************************************************
+//                 P R O G R A M    H I S T O R Y                 *
+//                                                                *
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+//----------------------------------------------------------------*
+// Niharika Tammana: 02/09/2024    : 24090001  :  MICROSERVICES   *
+//----------------------------------------------------------------*
+package com.tcs.bancs.microservices.java.dbconnection;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import com.tcs.bancs.microservices.config.CBSDayDbConfig;
+import com.tcs.bancs.microservices.config.CBSNightDbConfig;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+
+@Service
+public class DBConnection {
+
+    @Autowired
+    @Qualifier("dayDataSource")
+    private DataSource dayDataSource;
+
+    @Autowired
+    @Qualifier("nightDataSource")
+    private DataSource nightDataSource;
+
+    @Value("${UTENVCALS-DEF-RMODE}")
+    private String dbmode;
+
+    DBConnection_Child dbobj = new DBConnection_Child();
+    Logger logger = LoggerFactory.getLogger(DBConnection.class);
+
+    private Connection conn = null;
+
+    public String getCBSDBConnection(String dbcallCode, String inpcallCode, String inpoptcode, String inpcommonarea) 
+            throws InvalidDataSourceFormatException, SQLException {
+
+        String cbsDBAllowFlag = "N";
+        String dbtype;
+        String denyFlag = "N";
+
+        try {
+            dbtype = getDbType(dbmode);
+        } catch (InvalidDataSourceFormatException e) {
+            logger.error("DBConnection: Error in the fetched datasource type");
+            return cbsDBAllowFlag;
+        }
+
+        // Close and reinitialize connection if necessary
+        if (conn == null || conn.isClosed()) {
+            conn = performDatabaseOperation(dbtype);
+        } else {
+            logger.info("Reusing an existing open connection.");
+        }
+
+        if ("01".equals(dbcallCode)) {
+            denyFlag = dbobj.callJVM(dbcallCode, conn);
+            if ("N".equals(denyFlag)) {
+                cbsDBAllowFlag = "Y";
+            }
+        }
+
+        // Close the connection after use to ensure each call is fresh
+        closeConnection();
+
+        return cbsDBAllowFlag;
+    }
+
+    public Connection performDatabaseOperation(String dbType) {
+        DataSource dataSource = getDataSource(dbType);
+        Connection connection = null;
+        try {
+            connection = dataSource.getConnection();
+            logger.info("Connected to " + dbType + " database: " + connection.toString());
+            return connection;
+        } catch (SQLException e) {
+            logger.error("Error establishing database connection", e);
+        }
+        return connection;
+    }
+
+    private DataSource getDataSource(String dbType) {
+        switch (dbType) {
+            case "day":
+                return dayDataSource;
+            case "night":
+                return nightDataSource;
+            default:
+                throw new IllegalArgumentException("Unsupported database type: " + dbType);
+        }
+    }
+
+    private String getDbType(String flag) throws InvalidDataSourceFormatException {
+        if ("D".equalsIgnoreCase(flag) || "T".equalsIgnoreCase(flag)) {
+            return "day";
+        } else if ("N".equalsIgnoreCase(flag)) {
+            return "night";
+        } else {
+            logger.error("DBConnection: Unsupported datasource type");
+            throw new InvalidDataSourceFormatException("Unsupported datasource type");
+        }
+    }
+
+    // Method to close the database connection
+    private void closeConnection() {
+        if (conn != null) {
+            try {
+                conn.close();
+                logger.info("Connection closed successfully.");
+            } catch (SQLException e) {
+                logger.error("Error closing connection", e);
+            }
+        }
+    }
+}
