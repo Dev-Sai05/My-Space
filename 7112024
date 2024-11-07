@@ -3,3 +3,87 @@ if (connection != null && !connection.isClosed()) {
 } else {
     System.out.println("Connection is null or closed.");
 }
+
+
+================
+
+
+package com.tcs.bancs.microservices.config;
+
+import java.util.HashMap;
+import java.util.Set;
+
+import javax.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.tcs.bancs.microservices.util.FrameworkConstants;
+
+
+@Configuration
+@PropertySource("file:${ChannelsPropConfigPath}/Config/DBProperties.properties")
+@ConditionalOnProperty(value = "day.module.enabled", havingValue = FrameworkConstants.TRUE, matchIfMissing = true)
+@EnableTransactionManagement
+@EnableJpaRepositories(entityManagerFactoryRef = "dayEntityManagerFactory", transactionManagerRef = "dayTransactionManager", basePackages =  {
+    FrameworkConstants.DayRepoPackage}
+)
+public class CBSDayDbConfig {
+    public static String connectionType;
+	public static Set<Class<? extends Object>> dayClasses =null;
+
+	
+	  @Value("${day.jpa.properties.hibernate.dialect}")
+	  private String hibernateDialect;
+
+	
+    @Value("${day.module.connectionType}")
+    public void setDayDB(String connectionType) {
+        CBSDayDbConfig.connectionType = connectionType;
+    }
+
+    @Primary
+    @Bean(name = "dayDataSource")
+    @ConfigurationProperties(prefix = "day.datasource")
+    public DataSource daydataSource() {
+        return DataSourceBuilder.create().build();
+    }
+
+    @Primary
+    @Bean(name = "dayTransactionManager")
+    public PlatformTransactionManager dayTransactionManager(
+        @Qualifier("dayEntityManagerFactory")
+    EntityManagerFactory dayEntityManagerFactory) {
+        return new JpaTransactionManager(dayEntityManagerFactory);
+    }
+
+    @Primary
+    @Bean(name = "dayEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean dayEntityManagerFactory(
+        EntityManagerFactoryBuilder builder,
+        @Qualifier("dayDataSource")
+    DataSource dataSource) {
+    	HashMap<String, Object> props = new HashMap<>();
+        props.put("hibernate.dialect", hibernateDialect);
+
+    	
+    	
+        return builder.dataSource(dataSource).properties(props)
+                      .packages(FrameworkConstants.DB_MODEL_PATH)
+                      .persistenceUnit("day").build();
+    }
+}
