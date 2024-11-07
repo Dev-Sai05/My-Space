@@ -7,83 +7,140 @@ if (connection != null && !connection.isClosed()) {
 
 ================
 
-
-package com.tcs.bancs.microservices.config;
-
-import java.util.HashMap;
-import java.util.Set;
-
-import javax.persistence.EntityManagerFactory;
-import javax.sql.DataSource;
-
+//    SBI Core Banking Project, Hyderabad, India.       *
+//*****************************************************************
+//                                                                *
+//  	           PROGRAM - DBConnection.java                    *
+//                                                                *
+//*****************************************************************
+//                 P R O G R A M    H I S T O R Y                 *
+//                                                                *
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+//----------------------------------------------------------------*
+// Niharika Tammana: 02/09/2024    : 24090001  :  MICROSERVICES   *
+//----------------------------------------------------------------*
+package com.tcs.bancs.microservices.java.dbconnection;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import com.tcs.bancs.microservices.config.CBSDayDbConfig;
+import com.tcs.bancs.microservices.config.CBSNightDbConfig;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.stereotype.Component;
 
-import com.tcs.bancs.microservices.util.FrameworkConstants;
+@Service
+public class DBConnection {
 
+    @Autowired
+    @Qualifier("dayDataSource")
+    private DataSource dayDataSource;
 
-@Configuration
-@PropertySource("file:${ChannelsPropConfigPath}/Config/DBProperties.properties")
-@ConditionalOnProperty(value = "day.module.enabled", havingValue = FrameworkConstants.TRUE, matchIfMissing = true)
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "dayEntityManagerFactory", transactionManagerRef = "dayTransactionManager", basePackages =  {
-    FrameworkConstants.DayRepoPackage}
-)
-public class CBSDayDbConfig {
-    public static String connectionType;
-	public static Set<Class<? extends Object>> dayClasses =null;
-
+    @Autowired
+    @Qualifier("nightDataSource")
+    private DataSource nightDataSource;
+    
+	@Value("${UTENVCALS-DEF-RMODE}")
+	private String dbmode;
 	
-	  @Value("${day.jpa.properties.hibernate.dialect}")
-	  private String hibernateDialect;
-
-	
-    @Value("${day.module.connectionType}")
-    public void setDayDB(String connectionType) {
-        CBSDayDbConfig.connectionType = connectionType;
-    }
-
-    @Primary
-    @Bean(name = "dayDataSource")
-    @ConfigurationProperties(prefix = "day.datasource")
-    public DataSource daydataSource() {
-        return DataSourceBuilder.create().build();
-    }
-
-    @Primary
-    @Bean(name = "dayTransactionManager")
-    public PlatformTransactionManager dayTransactionManager(
-        @Qualifier("dayEntityManagerFactory")
-    EntityManagerFactory dayEntityManagerFactory) {
-        return new JpaTransactionManager(dayEntityManagerFactory);
-    }
-
-    @Primary
-    @Bean(name = "dayEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean dayEntityManagerFactory(
-        EntityManagerFactoryBuilder builder,
-        @Qualifier("dayDataSource")
-    DataSource dataSource) {
-    	HashMap<String, Object> props = new HashMap<>();
-        props.put("hibernate.dialect", hibernateDialect);
-
+    DBConnection_Child	dbobj	=	new DBConnection_Child();
+    
+    Logger logger = LoggerFactory.getLogger(DBConnection.class);
+    Connection conn = null;
+    
+  
+    
+    public String getCBSDBConnection(String dbcallCode,String inpcallCode, String inpoptcode, String inpcommonarea) throws InvalidDataSourceFormatException, SQLException{
     	
-    	
-        return builder.dataSource(dataSource).properties(props)
-                      .packages(FrameworkConstants.DB_MODEL_PATH)
-                      .persistenceUnit("day").build();
+		String cbsDBAllowFlag = "N";
+		String dbtype       = new String();
+		String denyFlag = new String();
+		
+        try {
+        	dbtype = getDbType(dbmode);
+        	
+        } catch(InvalidDataSourceFormatException e) {
+        	logger.error("dbconnection : Error in the fetched datasource type");
+        	return cbsDBAllowFlag;
+        }
+        
+        if (conn != null && !conn.isClosed()) {
+            System.out.println("Connection is valid and open.");
+        } else {
+            System.out.println("Connection is null or closed.");
+        }
+		
+if(dbcallCode.equals("01")) {
+		conn = performDatabaseOperation(dbtype);
+		if(conn != null) {
+			
+			denyFlag = dbobj.callJVM(dbcallCode, conn);
+		}
+
+
+	        if(denyFlag.equals("N")) {
+	        	cbsDBAllowFlag = "Y";
+	        }	  
+}
+
+//if(dbcallCode.equals("04")) {
+//	if(conn != null) {
+//		dbobj.callJVM(dbcallCode, conn);
+//	}
+//	else {
+//		logger.info("null string in unbind java");
+//	}
+//}
+
+		return cbsDBAllowFlag;
+	  }
+    
+    
+    
+    
+    public Connection performDatabaseOperation(String dbType) {
+        DataSource dataSource = getDataSource(dbType);
+        Connection connection = null;
+        try{
+        	connection = dataSource.getConnection();
+        	logger.info("connection" + connection.toString());
+            // Perform operations with the connection
+        	logger.info("Connected to " + dbType + " database.");
+            return connection;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return connection;
     }
+
+    private DataSource getDataSource(String dbType) {
+        switch (dbType) {
+            case "day":
+                return dayDataSource;
+            case "night":
+                return nightDataSource;
+            default:
+                throw new IllegalArgumentException("Unsupported database type: " + dbType);
+        }
+    }
+    
+	  private String getDbType(String flag) {
+	  
+	  if(flag.equalsIgnoreCase("D") || flag.equalsIgnoreCase("T")) {
+		  return "day";			  
+	  }
+	  else if(flag.equalsIgnoreCase("N")) {
+		  return "night";
+	  }
+	  else {
+    	logger.error("dbconnection : Unsupported datasource type");
+      throw new InvalidDataSourceFormatException("Unsupported datasource type");
+	  }
+}
 }
