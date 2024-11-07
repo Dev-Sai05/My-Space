@@ -1,0 +1,5 @@
+if (connection != null && !connection.isClosed()) {
+    System.out.println("Connection is valid and open.");
+} else {
+    System.out.println("Connection is null or closed.");
+}
