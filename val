@@ -281,3 +281,134 @@
 024100 A006-EXIT.
 024200 EXIT.
 024300
+
+
+
+
+
+
+* ***********************************************************************
+       * SBI Core Banking Project, CBD HYDERABAD
+       * Hyderabad, India.
+       * ***********************************************************************
+       * PROGRAM - JVMVAL.COB
+       * ***********************************************************************
+       * Author: TATA CONSULTANCY SERVICES
+       * Date: 02/09/2024
+       * Description: JVM Layer for Branch, Teller Validations
+       * ***********************************************************************
+
+       IDENTIFICATION DIVISION.
+       CLASS-ID. JVMVAL.
+
+       AUTHOR. TATA CONSULTANCY SERVICES.
+       DATE-WRITTEN. 02/09/2024.
+
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. VAX.
+       OBJECT-COMPUTER. VAX.
+
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01 WA-TELLER-CAPABALITY                 PIC X(02).
+       01 WA-SERVICES-FLAG                     PIC X(01).
+       01 WA-FIRST-FLAG                        PIC X(01) VALUE "Y".
+       01 WA-ERROR-FLAG                        PIC X(01).
+       01 WA-ERROR-NUMBER                     PIC 9(04).
+
+       01 WA-BRHM-KEY.
+          03 WA-BRHM-INST-NO                  PIC 9(03).
+          03 WA-BRHM-BR-NO                    PIC 9(16).
+
+       01 WA-BRHMMAST-RECORD-AREA.
+          COPY BRHMMAST    IN LIBRYMIS.
+
+       01 TELM-RECORD-AREA.
+          COPY TELMMAST    IN LIBRYMIS.
+
+       01 LS-VALIDATE-TELLER-NO               PIC X(16).
+       01 LS-VALIDATE-BRANCH-NO               PIC X(16).
+       01 LS-VALIDATE-ALLOW-FLAG              PIC X(01).
+       01 LS-VALIDATE-ERROR-NO                PIC X(04).
+       01 LS-CONNECTION-DS                    OBJECT.
+
+       PROCEDURE DIVISION.
+
+       * Main program entry point
+       METHOD-ID. MAIN-PROGRAM.
+           PERFORM INITIALIZE-PARAMETERS
+           PERFORM VALIDATE-TELLER
+           PERFORM SEND-RESPONSE
+           PERFORM DISCONNECT-DATABASE
+           STOP RUN.
+
+       * Initialize parameters
+       METHOD-ID. INITIALIZE-PARAMETERS.
+           MOVE "N" TO WA-ERROR-FLAG
+           MOVE ZEROES TO WA-ERROR-NUMBER
+           MOVE "Y" TO WA-FIRST-FLAG.
+
+       * Validate Teller Number
+       METHOD-ID. VALIDATE-TELLER.
+           MOVE LS-VALIDATE-TELLER-NO TO TELM-TELLER-NO.
+           MOVE TELM-KEY TO DBIO-CALL-KEY-AREA.
+           CALL "DBIO" USING DBIO-CALL-PARAM
+                               DBIO-CALL-SYS-AREA
+                               DBIO-CALL-KEY-AREA
+                               DBIO-CALL-STATUS
+                               TELM-RECORD-AREA
+                               DBIO-CALL-REFER-AREA.
+
+           IF DBIO-CALL-STATUS NOT = "****"
+               IF DBIO-CALL-STATUS = "MRNF"
+                   MOVE 529 TO WA-ERROR-NUMBER
+                   MOVE "Y" TO WA-ERROR-FLAG
+                   DISPLAY "TELLER NOT FOUND".
+               ELSE
+                   MOVE 155 TO WA-ERROR-NUMBER
+                   MOVE "Y" TO WA-ERROR-FLAG
+                   DISPLAY "ERROR IN FETCHING TELM".
+               END-IF
+           ELSE
+               MOVE TELM-PRIMARY-CAP TO WA-TELLER-CAPABALITY
+               IF TELM-SIGNON-FLAG = 'Y'
+                   PERFORM VALIDATE-BRANCH
+               ELSE
+                   MOVE 148 TO WA-ERROR-NUMBER
+                   MOVE "Y" TO WA-ERROR-FLAG
+                   DISPLAY "TELLER NOT SIGNED ON".
+               END-IF
+           END-IF.
+
+       * Validate Branch Number
+       METHOD-ID. VALIDATE-BRANCH.
+           MOVE LS-VALIDATE-BRANCH-NO TO WA-BRHM-BR-NO.
+           MOVE "003" TO WA-BRHM-INST-NO.
+           CALL "DBIO" USING DBIO-CALL-PARAM
+                              DBIO-CALL-SYS-AREA
+                              DBIO-CALL-KEY-AREA
+                              DBIO-CALL-STATUS
+                              WA-BRHMMAST-RECORD-AREA.
+
+           IF DBIO-CALL-STATUS = "MRNF"
+               MOVE 526 TO WA-ERROR-NUMBER
+               MOVE "Y" TO WA-ERROR-FLAG
+               DISPLAY "BRANCH NOT FOUND".
+           END-IF.
+
+       * Send response
+       METHOD-ID. SEND-RESPONSE.
+           DISPLAY "Sending response...".
+
+       * Database disconnection
+       METHOD-ID. DISCONNECT-DATABASE.
+           CALL "DBIO" USING DBIO-CALL-PARAM
+                              DBIO-CALL-SYS-AREA
+                              DBIO-CALL-STATUS
+                              DBIO-CALL-REFER-AREA.
+
+       END CLASS JVMVAL.
