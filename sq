@@ -1,0 +1,651 @@
+	<handler id="OpenESQL" name="SQL" description="Sql_OESQL_Handler">
+		<commandLine optionsStart="-sql odbc -optsql &quot;" optionsEnd="&quot;">
+			<options name="-sql" value="odbc"/>
+			<options name="-optsql">
+				<args start="&quot;" end="&quot;"/>
+			</options>
+			<limitToProjectType>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</commandLine>
+		<directive id="OESQL.dbman" name="DBMAN" type="selection" noallowed="false" default="" description="Sql_OESQL_DbMan">
+			<option value="ADO">
+				<limitToPlatform>
+					<platform value="windows"/>
+				</limitToPlatform>
+				<limitToProjectType>
+					<projectType value="dotnet"/>
+				</limitToProjectType>
+			</option>
+			<option value="ODBC">
+				<limitToProjectType>
+					<projectType value="nativelocal"/>
+					<projectType value="nativeremote"/>
+					<projectType value="dotnet"/>
+					<projectType value="plilocal"/>
+					<projectType value="pliremote"/>
+				</limitToProjectType>
+			</option>
+			<option value="JDBC">
+				<limitToProjectType>
+					<projectType value="jvmlocal"/>
+					<projectType value="jvmremote"/>
+				</limitToProjectType>
+			</option>
+			<option value="OCI">
+				<limitToProjectType>
+					<projectType value="plilocal"/>
+					<projectType value="pliremote"/>
+				</limitToProjectType>
+			</option>
+		</directive>
+		<directive id="OESQL.access" name="ACCESS" type="string" default="" noallowed="true" description="Sql_OESQL_Access">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.adopicxisansi" name="ADOPICXISANSI" type="boolean" noallowed="true" default="false" description="Sql_OESQL_AdoPicXIsAnsi">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.allownullchar" name="ALLOWNULLCHAR" type="boolean" noallowed="true" default="false" description="Sql_OESQL_AllowNullChar"/>
+		<directive id="OESQL.allowserverselect" name="ALLOWSERVERSELECT" type="boolean" noallowed="true" default="false" description="Sql_OESQL_AllowServerSelect"/>
+		<directive id="OESQL.ansi92entry" name="ANSI92ENTRY" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Ansi92Entry"/>
+		<directive id="OESQL.autocommit" name="AUTOCOMMIT" type="boolean" noallowed="true" default="false" description="Sql_OESQL_AutoCommit"/>
+		<directive id="OESQL.autofetch" name="AUTOFETCH" type="boolean" noallowed="true" default="false" description="Sql_OESQL_AutoFetch">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.behavior" name="BEHAVIOR" type="selection" noallowed="false" default="OPTIMIZED" description="Sql_OESQL_Behavior">
+			<option value="ANSI"/>
+			<option value="MAINFRAME"/>
+			<option value="CICS"/>
+			<option value="JCL"/>
+			<option value="OPTIMIZED"/>
+			<option value="UNOPTIMIZED"/>
+		</directive>
+		<directive id="OESQL.bind" name="BIND" type="string" default="" noallowed="true" description="Sql_OESQL_Bind">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.bgp" name="BGP" type="selection" noallowed="false" default="NONE" description="Sql_OESQL_Bgp">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+			<option value="BASIC"/>
+			<option value="FULL"/>
+			<option value="NONE"/>
+		</directive>
+		<directive id="OESQL.check" name="CHECK" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Check"/>
+		<directive id="OESQL.checkcallparams" name="CHECKCALLPARAMS" type="boolean" noallowed="true" default="false" description="Sql_OESQL_CheckCallParams">
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+		</directive>
+		<directive id="OESQL.checkdupcursor" name="CHECKDUPCURSOR" type="boolean" noallowed="true" default="true" description="Sql_OESQL_CheckDupCursor"/>
+		<directive id="OESQL.checksingleton" name="CHECKSINGLETON" type="boolean" noallowed="true" default="true" description="Sql_OESQL_CheckSingleton"/>
+		<directive id="OESQL.checksp" name="CHECKSP" type="string" default="" noallowed="false" description="Sql_OESQL_CheckSP">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.close_on_commit" name="CLOSE_ON_COMMIT" type="selection" noallowed="false" default="YES" description="Sql_OESQL_CloseOnCommit">
+			<option value="NO"/>
+			<option value="YES"/>
+		</directive>
+		<directive id="OESQL.close_on_rollback" name="CLOSE_ON_ROLLBACK" type="selection" noallowed="false" default="YES" description="Sql_OESQL_CloseOnRollback">
+			<option value="NO"/>
+			<option value="YES"/>
+		</directive>
+		<directive id="OESQL.concat" name="CONCAT" type="string" noallowed="false" default="33" description="Sql_OESQL_Concat"/>
+		<directive id="OESQL.connectionpool" name="CONNECTIONPOOL" type="selection" noallowed="false" default="NONE" description="Sql_OESQL_ConnectionPool">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="DRIVER"/>
+			<option value="ENVIRONMENT"/>
+			<option value="NONE"/>
+		</directive>
+		<directive id="OESQL.ctrace" name="CTRACE" type="boolean" noallowed="true" default="true" description="Sql_OESQL_CTrace"/>
+		<directive id="OESQL.cursorcase" name="CURSORCASE" type="boolean" noallowed="true" default="true" description="Sql_OESQL_CursorCase">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.date" name="DATE" type="selection" noallowed="true" default="ISO" description="Sql_OESQL_Date">
+			<option value="EUR"/>
+			<option value="ISO"/>
+			<option value="JIS"/>
+			<option value="USA"/>
+			<option value="EXTERNAL"/>
+			<option value="ODBC"/>
+		</directive>
+		<directive id="OESQL.datedelim" name="DATEDELIM" type="string" default="" noallowed="false" description="Sql_OESQL_Datedelim"/>
+		<directive id="OESQL.db" name="DB" type="string" default="" noallowed="true" description="Sql_OESQL_DB"/>
+		<directive id="OESQL.dbrmlib" name="DBRMLIB" type="string" default="" noallowed="false" description="Sql_OESQL_Dbrmlib">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.decdel" name="DECDEL" type="selection" noallowed="true" default="PERIOD" description="Sql_OESQL_Decdel">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="PERIOD"/>
+			<option value="COMMA"/>
+			<option value="LOCAL"/>
+		</directive>
+		<directive id="OESQL.def_cursor" name="DEF_CURSOR" type="selection" noallowed="false" default="RO" description="Sql_OESQL_DefCursor">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="RO"/>
+			<option value="UPD"/>
+		</directive>
+		<directive id="OESQL.describedtchar" name="DESCRIBEDTCHAR" type="boolean" noallowed="false" default="false" description="Sql_OESQL_DescribeDTChar"/>
+		<directive id="OESQL.describedtrec" name="DESCRIBEDTREC" type="boolean" noallowed="false" default="false" description="Sql_OESQL_DescribeDTRec"/>
+		<directive id="OESQL.describevarchar49" name="DESCRIBEVARCHAR49" type="boolean" noallowed="false" default="false" description="Sql_OESQL_DescribeVarchar49"/>
+		<directive id="OESQL.describevarcharpicx" name="DESCRIBEVARCHARPICX" type="boolean" noallowed="false" default="false" description="Sql_OESQL_DescribeVarcharpicx"/>
+		<directive id="OESQL.detectdate" name="DETECTDATE" type="selection" noallowed="true" default="CLIENT" description="Sql_OESQL_DetectDate">
+			<option value="CLIENT"/>
+			<option value="SQLTYPE"/>
+			<option value="SERVER"/>
+			<option value="PICX"/>
+		</directive>
+		<directive id="OESQL.dialect" name="DIALECT" type="selection" noallowed="false" default="MAINFRAME" description="Sql_OESQL_Dialect">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+			<option value="MAINFRAME"/>
+			<option value="MIXED"/>
+			<option value="NONE"/>
+		</directive>
+		<directive id="OESQL.esqlversion" name="ESQLVERSION" type="selection" noallowed="false" default="3.0" description="Sql_OESQL_EsqlVersion">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="1.0"/>
+			<option value="2.0"/>
+			<option value="3.0"/>
+		</directive>
+		<directive id="OESQL.fipsflag" name="FIPSFLAG" type="boolean" noallowed="true" default="true" description="Sql_OESQL_FipsFlag">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.gen-cc2" name="GEN-CC2" type="boolean" noallowed="true" default="true" description="Sql_OESQL_GenCC2"/>
+		<directive id="OESQL.gen-class-var" name="GEN-CLASS-VAR" type="boolean" noallowed="true" default="true" description="Sql_OESQL_GenClassVar"/>
+		<directive id="OESQL.gen-hv-from-group" name="GEN-HV-FROM-GROUP" type="boolean" noallowed="true" default="false" description="Sql_OESQL_GenHvFromGroup"/>
+		<directive id="OESQL.gen-init-flag" name="GEN-INIT-FLAG" type="boolean" noallowed="true" default="true" description="Sql_OESQL_GenInitFlag"/>
+		<directive id="OESQL.gen-sqlca" name="GEN-SQLCA" type="boolean" noallowed="true" default="true" description="Sql_OESQL_Gen_Sqlca"/>
+		<directive id="OESQL.ignore-nested" name="IGNORE-NESTED" type="string" noallowed="true" default="" description="Sql_OESQL_IgnoreNested"/>
+		<directive id="OESQL.init" name="INIT" type="selection" noallowed="true" default="" description="Sql_OESQL_Init">
+			<option value=""/>
+			<option value="PROT"/>
+		</directive>
+		<directive id="OESQL.hsftrace" name="HSFTRACE" type="boolean" noallowed="true" default="false" description="Sql_OESQL_HSFTrace"/>
+		<directive id="OESQL.ic_fh_isolation" name="IC_FH_ISOLATION" type="selection" noallowed="false" default="CR" description="Sql_OESQL_IcFhIsolation">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="CR"/>
+			<option value="RR"/>
+			<option value="SZ"/>
+			<option value="UR"/>
+		</directive>
+		<directive id="OESQL.ignoreschemaerrors" name="IGNORESCHEMAERRORS" type="boolean" noallowed="true" default="false" description="Sql_OESQL_IgnoreSchemaErrors"/>
+		<directive id="OESQL.isolation" name="ISOLATION" type="selection" noallowed="false" default="CR" description="Sql_OESQL_Isolation">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="CR"/>
+			<option value="RR"/>
+			<option value="SZ"/>
+			<option value="UR"/>
+		</directive>
+		<directive id="OESQL.jit" name="JIT" type="boolean" noallowed="true" default="true" description="Sql_OESQL_Jit"/>
+		<directive id="OESQL.jndi" name="JNDI" type="string" noallowed="false" default="" description="Sql_OESQL_Jndi">
+			<limitToProjectType>
+				<projectType value="jvmlocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.jndienc" name="JNDIENC" type="string" noallowed="false" default="" description="Sql_OESQL_Jndienc">
+			<limitToProjectType>
+				<projectType value="jvmlocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.mars" name="MARS" type="boolean" noallowed="true" default="true" description="Sql_OESQL_Mars">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+		</directive>
+		<directive id="OESQL.member" name="MEMBER" type="string" default="" noallowed="true" description="Sql_OESQL_Member">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.nestedclrdebug" name="NESTEDCLRDEBUG" type="boolean" noallowed="false" default="false" description="Sql_OESQL_NestedCLRDebug">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.nist" name="NIST" type="boolean" noallowed="true" default="true" description="Sql_OESQL_Nist"/>
+		<directive id="OESQL.not" name="NOT" type="string" noallowed="false" default="170" description="Sql_OESQL_Not"/>
+		<directive id="OESQL.odbctrace" name="ODBCTRACE" type="selection" noallowed="false" default="USER" description="Sql_OESQL_OdbcTrace">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="ALWAYS"/>
+			<option value="NEVER"/>
+			<option value="USER"/>
+		</directive>
+		<directive id="OESQL.odbcv3" name="ODBCV3" type="boolean" noallowed="false" default="false" description="Sql_OESQL_Odbcv3"/>
+		<directive id="OESQL.odbcver" name="ODBCVER" type="selection" noallowed="false" default="20" description="Sql_OESQL_Odbcver">
+			<option value="20"/>
+			<option value="30"/>
+			<option value="38"/>
+		</directive>
+		<directive id="OESQL.optimizespcursors" name="OPTIMIZESPCURSORS" type="boolean" noallowed="false" default="false" description="Sql_OESQL_Optimizespcursors">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.option" name="OPTION" type="selection" noallowed="false" default="" description="Sql_OESQL_Option">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+			<option value="NESTEDCLRDEBUG"/>
+			<option value="NORSLOCATORS"/>
+			<option value="PROCOB"/>
+		</directive>
+		<directive id="OESQL.optper" name="OPTPER" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Optper"/>
+		<directive id="OESQL.paramarray" name="PARAMARRAY" type="boolean" noallowed="true" default="false" description="Sql_OESQL_ParamArray">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.pass" name="PASS" type="string" noallowed="true" default="" description="Sql_OESQL_Pass"/>
+		<directive id="OESQL.pf_ro_cursor" name="PF_RO_CURSOR" type="string" noallowed="false" default="" description="Sql_OESQL_PfRoCursor">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.pf_upd_cursor" name="PF_UPD_CURSOR" type="string" noallowed="false" default="" description="Sql_OESQL_PfUpdCursor"/>
+		<directive id="OESQL.picxbinary" name="PICXBINARY" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Picxbinary">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.picxbinding" name="PICXBINDING" type="selection" noallowed="false" default="DEFAULT" description="Sql_OESQL_Picxbinding">
+			<option value="DEFAULT"/>
+			<option value="FIXED"/>
+			<option value="PAD"/>
+			<option value="TRIM"/>
+			<option value="TRIMALL"/>
+			<option value="VARIABLE"/>
+		</directive>
+		<directive id="OESQL.pre" name="PRE" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Pre">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.prefetch" name="PREFETCH" type="string" noallowed="false" default="8" description="Sql_OESQL_PreFetch">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.procob" name="PROCOB" type="boolean" noallowed="false" default="false" description="Sql_OESQL_Procob">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.promote" name="PROMOTE" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Promote">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.qualfix" name="QUALFIX" type="boolean" noallowed="true" default="true" description="Sql_OESQL_Qualfix"/>
+		<directive id="OESQL.qualifier" name="QUALIFIER" type="string" default="" noallowed="true" description="Sql_OESQL_Qualifier">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.resultarray" name="RESULTARRAY" type="boolean" default="false" noallowed="true" description="Sql_OESQL_ResultArray">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.ro_cursor" name="RO_CURSOR" type="selection" noallowed="false" default="DYNAMIC" description="Sql_OESQL_RoCursor">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="DYNAMIC"/>
+			<option value="FF"/>
+			<option value="FORWARD"/>
+			<option value="IC_FH"/>
+			<option value="KEYSET"/>
+			<option value="SCROLL"/>
+			<option value="STATIC"/>
+		</directive>
+		<directive id="OESQL.rslocators" name="RSLOCATORS" type="boolean" noallowed="true" default="true" description="Sql_OESQL_Rslocators">
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+		</directive>
+		<directive id="OESQL.save-return-code" name="SAVE-RETURN-CODE" type="boolean" noallowed="true" default="true" description="Sql_OESQL_Save_Return_Code"/>
+		<directive id="OESQL.sqlclrtrans" name="SQLCLRTRANS" type="boolean" noallowed="false" default="false" description="Sql_OESQL_Sqlclrtrans">
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+		</directive>
+		<directive id="OESQL.spcalllocal" name="SPCALLLOCAL" type="boolean" noallowed="true" default="false" description="Sql_OESQL_SpCallLocal">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+		</directive>
+		<directive id="OESQL.spcommitonreturn" name="SPCOMMITONRETURN" type="boolean" noallowed="false" default="false" description="Sql_OESQL_SpCommitOnReturn">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.spdisplay" name="SPDISPLAY" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Spdisplay"/>
+		<directive id="OESQL.stmtcache" name="STMTCACHE" type="string" noallowed="false" default="20" description="Sql_OESQL_StmtCache"/>
+		<directive id="OESQL.strictparse" name="STRICTPARSE" type="boolean" noallowed="true" default="false" description="Sql_OESQL_StrictParse">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.targetdb" name="TARGETDB" type="selection" noallowed="true" default="MSSQLSERVER" description="Sql_OESQL_TargetDb">
+			<option value="DB2"/>
+			<option value="INFORMIX"/>
+			<option value="MSSQLSERVER"/>
+			<option value="ORACLE"/>
+			<option value="ORACLE7"/>
+			<option value="POSTGRESQL"/>
+			<option value="SYBASE"/>
+		</directive>
+		<directive id="OESQL.spthrowexception" name="SPTHROWEXCEPTION" type="boolean" noallowed="false" default="false" description="Sql_OESQL_SpThrowException">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.testsqlstate" name="TESTSQLSTATE" type="boolean" noallowed="true" default="true" description="Sql_OESQL_TestSqlstate">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.thread" name="THREAD" type="selection" noallowed="false" default="SHARE" description="Sql_OESQL_Thread">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="ISOLATE"/>
+			<option value="SHARE"/>
+		</directive>
+		<directive id="OESQL.time" name="TIME" type="selection" noallowed="true" default="ISO" description="Sql_OESQL_Time">
+			<option value="EUR"/>
+			<option value="ISO"/>
+			<option value="JIS"/>
+			<option value="USA"/>
+			<option value="ODBC"/>
+		</directive>
+		<directive id="OESQL.timedelim" name="TIMEDELIM" type="string" default="" noallowed="false" description="Sql_OESQL_Timedelim"/>
+		<directive id="OESQL.tracelevel" name="TRACELEVEL" type="selection" noallowed="false" default="0" description="Sql_OESQL_TraceLevel">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="0"/>
+			<option value="1"/>
+			<option value="2"/>
+			<option value="3"/>
+			<option value="4"/>
+			<option value="D"/>
+			<option value="T"/>
+		</directive>
+		<directive id="OESQL.transaction" name="TRANSACTION" type="selection" noallowed="false" default="LOCAL" description="Sql_OESQL_Transaction">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="GLOBAL"/>
+			<option value="LOCAL"/>
+			<option value="MIXED"/>
+		</directive>
+		<directive id="OESQL.tstampsep" name="TSTAMPSEP" type="string" noallowed="false" default="" description="Sql_OESQL_Tstampsep"/>
+		<directive id="OESQL.unsafe_null" name="UNSAFE_NULL" type="boolean" noallowed="false" default="false" description="Sql_OESQL_UnsafeNull">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProjectType>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.upd_concurrency" name="UPD_CONCURRENCY" type="selection" noallowed="false" default="LOCK" description="Sql_OESQL_UpdConcurrency">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="dotnet"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="LOCK"/>
+			<option value="OPTCC"/>
+			<option value="OPTCCVAL"/>
+			<option value="OPTIMISTIC"/>
+		</directive>
+		<directive id="OESQL.upd_cursor" name="UPD_CURSOR" type="selection" noallowed="false" default="DYNAMIC" description="Sql_OESQL_UpdCursor">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="DYNAMIC"/>
+			<option value="FORWARD"/>
+			<option value="KEYSET"/>
+			<option value="SCROLL"/>
+			<option value="STATIC"/>
+		</directive>
+		<directive id="OESQL.usecurlib" name="USECURLIB" type="selection" noallowed="true" default="IFNEEDED" description="Sql_OESQL_UseCurLib">
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="nativeremote"/>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+			<option value="YES"/>
+			<option value="NO"/>
+			<option value="IFNEEDED"/>
+		</directive>
+		<directive id="OESQL.usersqlda" name="USER-SQLDA" type="selection" noallowed="false" default="NONE" description="Sql_OESQL_UserSQLDA">
+			<option value="ANSI"/>
+			<option value="MAINFRAME"/>
+			<option value="NONE"/>
+		</directive>
+		<directive id="OESQL.version" name="VERSION" type="string" default="" noallowed="false" description="Sql_OESQL_Version">
+			<limitToPlatform>
+				<platform value="windows"/>
+			</limitToPlatform>
+			<limitToProduct>
+				<product value="ed"/>
+			</limitToProduct>
+			<limitToProjectType>
+				<projectType value="nativelocal"/>
+				<projectType value="dotnet"/>
+			</limitToProjectType>
+		</directive>
+		<directive id="OESQL.wherecurrent" name="WHERECURRENT" type="boolean" noallowed="true" default="false" description="Sql_OESQL_Wherecurrent"/>
+		<directive id="OESQL.xaid" name="XAID" type="string" noallowed="false" default="" description="Sql_OESQL_XaID"/>
+		<directive id="OESQL.additional" name="additional" type="value" noallowed="false" default="" description="Sql_OESQL_Extra" shortdescription="Sql_OESQL_Extra_ShortDescription">
+			<limitToProjectType>
+				<projectType value="plilocal"/>
+				<projectType value="pliremote"/>
+			</limitToProjectType>
+		</directive>
+	</handler>
