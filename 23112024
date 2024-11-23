@@ -114,3 +114,54 @@ public class Ava_balance_child {
         String lacctno;
     }
 }
+
+
+
+
+package com.tcs.bancs.microservices.services;
+
+import com.tcs.bancs.microservices.jvm.balenq.JVMENQ;
+import com.tcs.bancs.microservices.jvm.balenq.JVMENQ.LsInpAccountNumber;
+import com.tcs.bancs.microservices.jvm.balenq.JVMENQ.LsOutputErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.JVMENQ.LsOutputResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class TestJVMENQ {
+    private static final Logger logger = LoggerFactory.getLogger(TestJVMENQ.class);
+
+    public static void main(String[] args) {
+        logger.info("Starting Test for JVMENQ...");
+
+        // Create an instance of JVMENQ
+        JVMENQ jvmenq = new JVMENQ();
+
+        // Prepare hard-coded input
+        String hardcodedAccountNumber = "12345678901234567"; // Example account number
+        LsInpAccountNumber input1 = new LsInpAccountNumber();
+        LsOutputErrorNumber output2 = new LsOutputErrorNumber();
+        LsOutputResponse output1 = new LsOutputResponse();
+
+        // Set the input account number
+        input1.setLsInpAccountNumber(hardcodedAccountNumber);
+
+        // Enable null character allowance
+        System.setProperty("com.microfocus.sql.allownullchar", "true");
+
+        // Call JVMENQ with the inputs and outputs
+        logger.info("Sending hard-coded input to JVMENQ...");
+        jvmenq.JVMENQ(input1, output2, output1);
+
+        // Log and display the results
+        String response = output1.getLsOutputResponse();
+        String errorNumber = output2.getLsOutputErrorNumber();
+
+        logger.info("JVMENQ Output Response: {}", response);
+        logger.info("JVMENQ Output Error Number: {}", errorNumber);
+
+        System.out.println("Output Response: " + response);
+        System.out.println("Error Number: " + errorNumber);
+
+        logger.info("Test for JVMENQ completed.");
+    }
+}
