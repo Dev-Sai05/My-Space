@@ -91,21 +91,25 @@ public class AccountEnqService_Child {
             CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
             
 
-            	Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
-            	Ls400InpEnqType input2 = new Ls400InpEnqType();
-            	Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
-            	Ls400OutputResponse output2 = new Ls400OutputResponse();
+                Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+                Ls400InpEnqType input2 = new Ls400InpEnqType();
+                Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+                Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+                Ls400OutputResponse output3 = new Ls400OutputResponse();
                  
                 input1.setLs400InputAccountNumber(currentLacctno);
                 input2.setLs400InpEnqType("1");
                                 
-                jvmavbl.JVMAVBL(input1,input2,output1,output2);
+                jvmavbl.JVMAVBL(input1,input2,output1,output2,output3);
 
                 ResponseData responseData = new ResponseData();
-                responseData.outResponse = output2.getLs400OutputResponse();
+                responseData.outResponse = output2.getLs400AccountActiveFlag();
+                logger.info("VC------------------------AVAILABLE BALANCE Child Service Ended------------------------VC" + output2.getLs400AccountActiveFlag());
+                responseData.outResponse = output3.getLs400OutputResponse();
                 responseData.outResponse = responseData.outResponse.trim();
                 responseData.errno = output1.getLs400OutputErrorNumber();
-                return responseData;
+                
+                return responseData
             }, customThreadPool);
 
             futures.add(future);
@@ -157,152 +161,3 @@ public class AccountEnqService_Child {
         String lacctno;
     }
 	}
-
-
-
-
-
-
-++++++++++++++
-
-
-
-package com.tcs.bancs.microservices.services;
-
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
-import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC;
-import com.tcs.bancs.microservices.jvm.balenq.Ls400InpEnqType;
-import com.tcs.bancs.microservices.jvm.balenq.Ls400InputAccountNumber;
-import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputErrorNumber;
-import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputResponse;
-import com.tcs.bancs.microservices.jvm.balenq.LsErrorNumber;
-import com.tcs.bancs.microservices.jvm.balenq.LsInputCustNumber;
-import com.tcs.bancs.microservices.jvm.balenq.LsOutputAccountNumbers;
-
-public class AccountEnqService_Child {
-    private static final Logger logger = LoggerFactory.getLogger(AccountEnqService_Child.class);
-    private final JVMCUCC jvmcucc = new JVMCUCC();
-    private final JVMAVBL jvmavbl = new JVMAVBL();
-
-    /**
-     * Fetch account numbers based on CIF number, record count, and target account number.
-     *
-     * @param cifno         CIF number (customer ID).
-     * @param recordCount   Number of records to fetch below the target account number.
-     * @return List of active account numbers based on the conditions.
-     */
-    public List<String> AccountEnqService_Child(String cifno, Integer recordCount) throws InterruptedException, ExecutionException {
-
-        logger.info("VC------------------ACCOUNT NUMBERS Child Service Started------------------VC");
-
-        // Default record count to 30 if not provided
-        int numberOfRecordsToFetch = (recordCount == null || recordCount <= 0) ? 30 : recordCount;
-
-        // Validate and format CIF number
-        String lacctno = (cifno == null || cifno.isEmpty()) ? "00000000000000000" : String.format("%017d", new BigInteger(cifno));
-
-        // Prepare input and output objects for JVMCUCC
-        LsInputCustNumber input = new LsInputCustNumber();
-        LsOutputAccountNumbers output = new LsOutputAccountNumbers();
-        LsErrorNumber error = new LsErrorNumber();
-
-        input.setLsInputCustNumber(lacctno);
-
-        // Call JVMCUCC to fetch account numbers
-        jvmcucc.JVMCUCC(input, error, output);
-
-        // Extract and validate the output from JVMCUCC
-        String outResponse = output.getLsOutputAccountNumbers();
-        String errno = error.getLsErrorNumber();
-
-        logger.info("Initial Output response: " + outResponse);
-        if (outResponse == null || outResponse.trim().isEmpty()) {
-            logger.info("No valid response from JVMCUCC.");
-            return new ArrayList<>();
-        }
-
-        // Split the response into 16-character chunks
-        List<String> allAccountNumbers = new ArrayList<>();
-        outResponse = outResponse.trim();
-
-        for (int i = 0; i + 16 <= outResponse.length(); i += 16) {
-            String account = outResponse.substring(i, i + 16).trim();
-            if (!account.matches("0+")) { // Exclude records with only zeros
-                allAccountNumbers.add(account);
-                logger.info("Extracted Account: " + account);
-            }
-        }
-
-        // Prepare to call JVMAVBL for each account number and check if it's active
-        List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
-        ForkJoinPool customThreadPool = new ForkJoinPool(25);
-        int fetchedRecordsCount = 0;
-        StringBuilder activeAccountNumbers = new StringBuilder();
-
-        while (fetchedRecordsCount < numberOfRecordsToFetch && !allAccountNumbers.isEmpty()) {
-            final String currentAccountNumber = allAccountNumbers.remove(0); // Get next account number
-
-            CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
-                Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
-                Ls400InpEnqType input2 = new Ls400InpEnqType();
-                Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
-                Ls400OutputResponse output2 = new Ls400OutputResponse();
-
-                input1.setLs400InputAccountNumber(currentAccountNumber);
-                input2.setLs400InpEnqType("1"); // Inquiry type 1 for active check
-
-                // Call JVMAVBL to check if the account is active
-                jvmavbl.JVMAVBL(input1, input2, output1, output2);
-
-                ResponseData responseData = new ResponseData();
-                responseData.outResponse = output2.getLs400OutputResponse().trim();
-                responseData.errno = output1.getLs400OutputErrorNumber();
-                responseData.accountNumber = currentAccountNumber;
-
-                return responseData;
-            }, customThreadPool);
-
-            futures.add(future);
-        }
-
-        // Process all futures
-        for (CompletableFuture<ResponseData> future : futures) {
-            ResponseData result = future.get();
-            if ("y".equalsIgnoreCase(result.outResponse)) {
-                activeAccountNumbers.append(result.accountNumber).append(", ");
-                fetchedRecordsCount++;
-                logger.info("Account " + result.accountNumber + " is active.");
-            }
-        }
-
-        // Return the list of active accounts
-        List<String> activeAccountsList = new ArrayList<>();
-        if (activeAccountNumbers.length() > 0) {
-            // Remove trailing comma and space
-            activeAccountNumbers.setLength(activeAccountNumbers.length() - 2);
-            String[] activeAccountsArray = activeAccountNumbers.toString().split(", ");
-            for (String account : activeAccountsArray) {
-                activeAccountsList.add(account);
-            }
-        }
-
-        logger.info("VC------------------ACCOUNT NUMBERS Child Service Ended------------------VC");
-        return activeAccountsList;
-    }
-
-    private class ResponseData {
-        String outResponse;
-        String errno;
-        String accountNumber;
-    }
-}
