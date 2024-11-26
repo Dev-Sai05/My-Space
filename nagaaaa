@@ -1,0 +1,66 @@
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC;
+import com.tcs.bancs.microservices.jvm.balenq.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsInputCustNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsOutputAccountNumbers;
+
+public class AccountEnqService_Child {
+    private static final Logger logger = LoggerFactory.getLogger(AccountEnqService_Child.class);
+    private final JVMCUCC jvmcucc = new JVMCUCC();
+
+    /**
+     * Fetch account numbers based on CIF number and requested record count.
+     *
+     * @param cifno                 CIF number (customer ID).
+     * @param requestedNumberOfRecords Number of records to fetch. Defaults to 30 if not provided.
+     * @return List of account numbers.
+     */
+    public List<String> fetchAccountNumbers(String cifno, Integer requestedNumberOfRecords) {
+        logger.info("VC------------------ACCOUNT NUMBERS Child Service Started------------------VC");
+
+        // Default requested records to 30 if not provided
+        int numberOfRecordsToFetch = (requestedNumberOfRecords == null || requestedNumberOfRecords <= 0) ? 30 : requestedNumberOfRecords;
+
+        // Validate and format CIF number
+        String lacctno = (cifno == null || cifno.isEmpty()) ? "00000000000000000" : String.format("%017d", new BigInteger(cifno));
+
+        // Prepare input and output objects
+        LsInputCustNumber input = new LsInputCustNumber();
+        LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+        LsErrorNumber error = new LsErrorNumber();
+
+        input.setLsInputCustNumber(lacctno);
+
+        // Call JVMCUCC
+        jvmcucc.JVMCUCC(input, error, output);
+
+        // Extract and validate the output
+        String outResponse = output.getLsOutputAccountNumbers();
+        if (outResponse == null || outResponse.trim().isEmpty()) {
+            logger.error("No valid response from JVMCUCC.");
+            return new ArrayList<>();
+        }
+
+        // Split the response into 16-character chunks
+        List<String> accountNumbers = new ArrayList<>();
+        outResponse = outResponse.trim();
+
+        for (int i = 0; i + 16 <= outResponse.length() && accountNumbers.size() < numberOfRecordsToFetch; i += 16) {
+            String accountNumber = outResponse.substring(i, i + 16).trim();
+            if (!accountNumber.matches("0+")) { // Exclude records with only zeros
+                accountNumbers.add(accountNumber);
+            }
+        }
+
+        logger.info("VC------------------ACCOUNT NUMBERS Child Service Ended------------------VC");
+        return accountNumbers;
+    }
+}
