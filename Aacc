@@ -108,3 +108,96 @@ public class AccountEnqService_Child {
         String lacctno;
     }
 }
+
+
+
+
+++++++++++++++++++++
+
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC;
+import com.tcs.bancs.microservices.jvm.balenq.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsInputCustNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsOutputAccountNumbers;
+
+public class AccountEnqService_Child {
+    private static final Logger logger = LoggerFactory.getLogger(AccountEnqService_Child.class);
+    private final JVMCUCC jvmcucc = new JVMCUCC();
+
+    public List<String> fetchAccountNumbers(String cifno, int requestedNumberOfRecords) throws InterruptedException, ExecutionException {
+        logger.info("VC------------------ACCOUNT NUMBERS Child Service Started------------------VC");
+
+        // Validate and format CIF number
+        String lacctno = (cifno == null || cifno.isEmpty()) ? "00000000000000000" : String.format("%017d", new BigInteger(cifno));
+
+        // Validate requested record count
+        int numberOfRecordsToFetch = Math.max(requestedNumberOfRecords, 1);
+
+        // Setup thread pool
+        ForkJoinPool customThreadPool = new ForkJoinPool(25);
+        List<String> accountNumbers = new ArrayList<>();
+
+        while (accountNumbers.size() < numberOfRecordsToFetch) {
+            final String currentLacctno = lacctno;
+
+            // Asynchronous task to fetch account numbers
+            CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
+                LsInputCustNumber input = new LsInputCustNumber();
+                LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+                LsErrorNumber error = new LsErrorNumber();
+
+                input.setLsInputCustNumber(currentLacctno);
+
+                jvmcucc.JVMCUCC(input, error, output);
+
+                ResponseData responseData = new ResponseData();
+                responseData.outResponse = output.getLsOutputAccountNumbers();
+                responseData.errno = error.getLsErrorNumber();
+                responseData.lacctno = responseData.outResponse != null && !responseData.outResponse.isEmpty()
+                        ? responseData.outResponse.substring(responseData.outResponse.length() - 16)
+                        : currentLacctno; // Default to current account number if no response
+                return responseData;
+            }, customThreadPool);
+
+            ResponseData responseData = future.get();
+
+            // Handle errors or empty responses
+            if (responseData.outResponse == null || responseData.outResponse.trim().isEmpty()) {
+                logger.error("No valid response from JVMCUCC. Terminating process.");
+                break;
+            }
+
+            // Split response into 16-character chunks and collect account numbers
+            String outResponse = responseData.outResponse.trim();
+            for (int i = 0; i + 16 <= outResponse.length() && accountNumbers.size() < numberOfRecordsToFetch; i += 16) {
+                String accountNumber = outResponse.substring(i, i + 16).trim();
+                if (!accountNumber.matches("0+")) { // Exclude records with only zeros
+                    accountNumbers.add(accountNumber);
+                }
+            }
+
+            lacctno = responseData.lacctno; // Update last account number for the next request
+        }
+
+        customThreadPool.shutdown();
+        logger.info("VC------------------ACCOUNT NUMBERS Child Service Ended------------------VC");
+
+        return accountNumbers;
+    }
+
+    // ResponseData class to encapsulate response
+    private static class ResponseData {
+        String outResponse;
+        String errno;
+        String lacctno;
+    }
+}
