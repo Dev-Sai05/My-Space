@@ -64,3 +64,90 @@ public class AccountEnqService_Child {
         return accountNumbers;
     }
 }
+
+
+
+
+---------
+
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC;
+import com.tcs.bancs.microservices.jvm.balenq.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsInputCustNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsOutputAccountNumbers;
+
+public class AccountEnqService_Child {
+    private static final Logger logger = LoggerFactory.getLogger(AccountEnqService_Child.class);
+    private final JVMCUCC jvmcucc = new JVMCUCC();
+
+    /**
+     * Fetch account numbers based on CIF number, record count, and target account number.
+     *
+     * @param cifno         CIF number (customer ID).
+     * @param recordCount   Number of records to fetch below the target account number.
+     * @param accountNumber Target account number to find in the output.
+     * @return List of account numbers based on the conditions.
+     */
+    public List<String> fetchAccountNumbers(String cifno, Integer recordCount, String accountNumber) {
+        logger.info("VC------------------ACCOUNT NUMBERS Child Service Started------------------VC");
+
+        // Default record count to 30 if not provided
+        int numberOfRecordsToFetch = (recordCount == null || recordCount <= 0) ? 30 : recordCount;
+
+        // Validate and format CIF number
+        String lacctno = (cifno == null || cifno.isEmpty()) ? "00000000000000000" : String.format("%017d", new BigInteger(cifno));
+
+        // Prepare input and output objects
+        LsInputCustNumber input = new LsInputCustNumber();
+        LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+        LsErrorNumber error = new LsErrorNumber();
+
+        input.setLsInputCustNumber(lacctno);
+
+        // Call JVMCUCC
+        jvmcucc.JVMCUCC(input, error, output);
+
+        // Extract and validate the output
+        String outResponse = output.getLsOutputAccountNumbers();
+        if (outResponse == null || outResponse.trim().isEmpty()) {
+            logger.error("No valid response from JVMCUCC.");
+            return new ArrayList<>();
+        }
+
+        // Split the response into 16-character chunks
+        List<String> allAccountNumbers = new ArrayList<>();
+        outResponse = outResponse.trim();
+
+        for (int i = 0; i + 16 <= outResponse.length(); i += 16) {
+            String account = outResponse.substring(i, i + 16).trim();
+            if (!account.matches("0+")) { // Exclude records with only zeros
+                allAccountNumbers.add(account);
+            }
+        }
+
+        // If accountNumber is provided, find it and fetch records below it
+        if (accountNumber != null && !accountNumber.isEmpty()) {
+            int index = allAccountNumbers.indexOf(accountNumber);
+            if (index != -1) {
+                int endIndex = Math.min(index + numberOfRecordsToFetch + 1, allAccountNumbers.size());
+                logger.info("Target account number found. Fetching records below it.");
+                return allAccountNumbers.subList(index + 1, endIndex);
+            } else {
+                logger.warn("Target account number not found in the output.");
+                return new ArrayList<>();
+            }
+        }
+
+        // If no accountNumber is provided, return the requested number of records from the start
+        logger.info("No target account number provided. Returning top records.");
+        return allAccountNumbers.subList(0, Math.min(numberOfRecordsToFetch, allAccountNumbers.size()));
+    }
+}
