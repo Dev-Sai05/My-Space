@@ -161,3 +161,123 @@ public class AccountEnqService_Child {
         String lacctno;
     }
 	}
+
+
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InpEnqType;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InputAccountNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputResponse;
+import com.tcs.bancs.microservices.jvm.balenq.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsInputCustNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsOutputAccountNumbers;
+
+public class AccountEnqService_Child {
+    private static final Logger logger = LoggerFactory.getLogger(AccountEnqService_Child.class);
+    private final JVMCUCC jvmcucc = new JVMCUCC();
+    private final JVMAVBL jvmavbl = new JVMAVBL();
+
+    /**
+     * Process account numbers and fetch active accounts based on requested record count.
+     *
+     * @param cifno         Customer CIF number.
+     * @param recordCount   Number of active account records to fetch.
+     * @return A list of output responses for active accounts.
+     */
+    public List<String> processAccountNumbers(String cifno, int recordCount) throws InterruptedException, ExecutionException {
+
+        logger.info("VC------------------Account Enquiry Child Service Started------------------VC");
+
+        // Validate and format CIF number
+        String formattedCifNo = String.format("%017d", new BigInteger(cifno));
+
+        // Prepare input and output objects for JVMCUCC
+        LsInputCustNumber input = new LsInputCustNumber();
+        LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+        LsErrorNumber error = new LsErrorNumber();
+
+        input.setLsInputCustNumber(formattedCifNo);
+
+        // Call JVMCUCC to fetch account numbers
+        jvmcucc.JVMCUCC(input, error, output);
+
+        // Extract and split account numbers into a list
+        String accountResponse = output.getLsOutputAccountNumbers();
+        if (accountResponse == null || accountResponse.trim().isEmpty()) {
+            logger.error("No account numbers found for CIF: " + cifno);
+            return new ArrayList<>();
+        }
+
+        List<String> accountNumbers = new ArrayList<>();
+        for (int i = 0; i + 16 <= accountResponse.length(); i += 16) {
+            String account = accountResponse.substring(i, i + 16).trim();
+            if (!account.matches("0+")) { // Exclude records with only zeros
+                accountNumbers.add(account);
+            }
+        }
+
+        logger.info("Fetched account numbers: " + accountNumbers);
+
+        // Prepare for processing account numbers through JVMAVBL
+        ForkJoinPool customThreadPool = new ForkJoinPool(25);
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+        List<String> activeAccountsData = new ArrayList<>();
+
+        for (String accountNumber : accountNumbers) {
+            if (activeAccountsData.size() >= recordCount) {
+                break; // Stop if requested record count is reached
+            }
+
+            CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+                Ls400InputAccountNumber inputAccount = new Ls400InputAccountNumber();
+                Ls400InpEnqType inputType = new Ls400InpEnqType();
+                Ls400OutputErrorNumber outputError = new Ls400OutputErrorNumber();
+                Ls400OutputResponse outputResponse = new Ls400OutputResponse();
+                Ls400AccountActiveFlag outputActiveFlag = new Ls400AccountActiveFlag();
+
+                inputAccount.setLs400InputAccountNumber(accountNumber);
+                inputType.setLs400InpEnqType("1");
+
+                jvmavbl.JVMAVBL(inputAccount, inputType, outputError, outputActiveFlag, outputResponse);
+
+                // Check if the account is active
+                if ("A".equalsIgnoreCase(outputActiveFlag.getLs400AccountActiveFlag())) {
+                    logger.info("Account is active: " + accountNumber);
+                    return outputResponse.getLs400OutputResponse();
+                }
+                return null; // Skip inactive accounts
+            }, customThreadPool);
+
+            futures.add(future);
+        }
+
+        // Collect active account data
+        for (CompletableFuture<String> future : futures) {
+            String response = future.get();
+            if (response != null) {
+                activeAccountsData.add(response.trim());
+                if (activeAccountsData.size() >= recordCount) {
+                    break; // Stop if requested record count is reached
+                }
+            }
+        }
+
+        customThreadPool.shutdown();
+
+        logger.info("VC------------------Account Enquiry Child Service Ended------------------VC");
+        return activeAccountsData;
+    }
+}
