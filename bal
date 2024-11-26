@@ -99,3 +99,69 @@ public class BalanceEnqService_Child {
         String lacctno;
     }
 }
+
+
+
+
+
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.services.BalanceEnqService_Child.ResponseData;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC;
+import com.tcs.bancs.microservices.jvm.balenq.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsInputCustNumber;
+import com.tcs.bancs.microservices.jvm.balenq.LsOutputAccountNumbers;
+
+public class AccountEnqService_Child {
+    private static final Logger logger = LoggerFactory.getLogger(AccountEnqService_Child.class);
+
+    private final JVMCUCC jvmcucc = new JVMCUCC();
+    private final BalanceEnqService_Child balanceEnqService = new BalanceEnqService_Child();
+
+    public List<ResponseData> fetchAccountBalances(String cifno, int requestedNumberOfRecords, String enquiryType)
+            throws InterruptedException, ExecutionException {
+        logger.info("VC------------------ACCOUNT NUMBERS & BALANCE ENQUIRY Child Service Started------------------VC");
+
+        // Step 1: Fetch account numbers
+        String lacctno = (cifno == null || cifno.isEmpty()) ? "00000000000000000" : String.format("%017d", new BigInteger(cifno));
+
+        // Prepare input and output objects
+        LsInputCustNumber input = new LsInputCustNumber();
+        LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+        LsErrorNumber error = new LsErrorNumber();
+
+        input.setLsInputCustNumber(lacctno);
+        jvmcucc.JVMCUCC(input, error, output);
+
+        String outResponse = output.getLsOutputAccountNumbers();
+        if (outResponse == null || outResponse.trim().isEmpty()) {
+            logger.error("No valid response from JVMCUCC.");
+            return new ArrayList<>();
+        }
+
+        // Step 2: Split response into account numbers
+        List<String> accountNumbers = new ArrayList<>();
+        outResponse = outResponse.trim();
+        for (int i = 0; i + 16 <= outResponse.length() && accountNumbers.size() < requestedNumberOfRecords; i += 16) {
+            String accountNumber = outResponse.substring(i, i + 16).trim();
+            if (!accountNumber.matches("0+")) { // Exclude records with only zeros
+                accountNumbers.add(accountNumber);
+            }
+        }
+
+        // Step 3: Pass account numbers to BalanceEnqService_Child
+        List<ResponseData> balanceResults = balanceEnqService.Balance_Enquiry_Child(accountNumbers, enquiryType);
+
+        logger.info("VC------------------ACCOUNT NUMBERS & BALANCE ENQUIRY Child Service Ended------------------VC");
+
+        return balanceResults;
+    }
+}
