@@ -106,3 +106,104 @@ public class BalanceEnqService_Child {
         String errno;
     }
 }
+
+
+
+
++++++++++
+
+
+
+package com.tcs.bancs.microservices.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400AccountActiveFlag;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InputAccountNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InpEnqType;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputResponse;
+
+public class BalanceEnqService_Child {
+
+    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+    JVMAVBL jvmavbl = new JVMAVBL();
+
+    public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords) {
+        logger.info("Starting Balance Enquiry Child Service...");
+
+        // Split the input account number into chunks of 16 digits
+        List<String> accountNumbers = splitIntoChunks(accno, 16);
+        logger.info("Account Numbers to display+++++++++++++++++++++++++++++++++" + accountNumbers);
+        if (accountNumbers.isEmpty()) {
+            logger.error("Invalid account number input.");
+            return List.of("No valid account numbers", "0", "ERROR");
+        }
+
+        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 30;
+        StringBuilder allRecordsBuilder = new StringBuilder();
+
+        int fetchedRecordsCount = 0;
+
+        for (String accountNumber : accountNumbers) {
+            // Create input and output objects for each account number
+            Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+            Ls400InpEnqType input2 = new Ls400InpEnqType();
+            Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+            Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+            Ls400OutputResponse output3 = new Ls400OutputResponse();
+
+            // Set input parameters
+            input1.setLs400InputAccountNumber(accountNumber);
+            input2.setLs400InpEnqType("1");
+
+            // Call the JVMAVBL service
+            jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
+
+            String errno = output1.getLs400OutputErrorNumber();
+            String outResponse = output3.getLs400OutputResponse();
+
+            if ("0000".equals(errno) && outResponse != null && !outResponse.trim().isEmpty()) {
+                allRecordsBuilder.append(outResponse.trim());
+                fetchedRecordsCount++;
+            } else if ("7998".equals(errno)) {
+                logger.warn("Error 7998 encountered for account. Skipping further processing.");
+                break;
+            } else {
+                logger.warn("Invalid response or error encountered. Error No: " + errno);
+            }
+
+            // Stop processing if the required number of records have been fetched
+            if (fetchedRecordsCount >= numberOfRecordsToFetch) {
+                break;
+            }
+        }
+
+        List<String> res = new ArrayList<>();
+        res.add(allRecordsBuilder.toString());
+        res.add(String.valueOf(fetchedRecordsCount));
+        res.add("0000"); // Assuming overall process success if records were fetched.
+
+        logger.info("Balance Enquiry Child Service completed.");
+        return res;
+    }
+
+    private List<String> splitIntoChunks(String input, int chunkSize) {
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < input.length(); i += chunkSize) {
+            int end = Math.min(input.length(), i + chunkSize);
+            chunks.add(input.substring(i, end));
+        }
+        return chunks;
+    }
+
+    public class ResponseData {
+        String outResponse;
+        String errno;
+    }
+}
