@@ -241,3 +241,20 @@ public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRec
     logger.info("Balance Enquiry Child Service completed.");
     return res;
 }
+
+
+
+
+
+private List<String> splitIntoChunks(String input, int chunkSize) {
+    List<String> chunks = new ArrayList<>();
+    for (int i = 0; i < input.length(); i += chunkSize) {
+        int end = Math.min(input.length(), i + chunkSize);
+        String chunk = input.substring(i, end).trim();
+        // Add only non-empty, non-zero chunks
+        if (!chunk.isEmpty() && !chunk.matches("^0+$")) {
+            chunks.add(chunk);
+        }
+    }
+    return chunks;
+}
