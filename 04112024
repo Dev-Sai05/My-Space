@@ -128,3 +128,25 @@ public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRec
     logger.info("Balance Enquiry Child Service completed.");
     return res;
 }
+
+
+
+if (accountno != null && !accountno.isEmpty()) {
+    int index = accountNumbers.indexOf(accountno);
+    if (index != -1) {
+        // Fetch records below the found account number
+        int startIndex = index + 1; // Start below the target account number
+        int endIndex = Math.min(startIndex + numberOfRecordsToFetch, accountNumbers.size());
+        logger.info("Target account number found. Fetching records below it.");
+        accountNumbers = accountNumbers.subList(startIndex, endIndex);
+        logger.info("Records to process below the target account number: " + accountNumbers);
+    } else {
+        logger.warn("Target account number not found in the list.");
+        return new ArrayList<>(); // Return an empty list if target not found
+    }
+} else {
+    // If no account number is provided, return the requested number of records from the start
+    logger.info("No target account number provided. Returning top records.");
+    accountNumbers = accountNumbers.subList(0, Math.min(numberOfRecordsToFetch, accountNumbers.size()));
+    logger.info("Records to process from the start: " + accountNumbers);
+}
