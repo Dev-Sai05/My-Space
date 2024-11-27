@@ -1,0 +1,133 @@
+package com.tcs.bancs.microservices.services;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.jvm.balenq.*;
+
+public class BalanceEnqService_Child {
+    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+
+    JVMAVBL jvmavbl = new JVMAVBL();
+
+    public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords, String lastAccno)
+            throws InterruptedException, ExecutionException {
+
+        logger.info("VC------------------------AVAILABLE BALANCE Child Service Started------------------------VC");
+
+        // Validate inputs
+        if (accno == null || accno.isEmpty()) {
+            logger.error("Account number input is empty or null");
+            throw new IllegalArgumentException("Account number cannot be null or empty");
+        }
+
+        // Split accno into 16-digit chunks
+        List<String> accountNumbers = splitAccountNumbers(accno);
+        logger.info("Total account numbers extracted: {}", accountNumbers.size());
+
+        // Find starting point based on lastAccno
+        int startIndex = 0;
+        if (lastAccno != null && !lastAccno.isEmpty()) {
+            startIndex = accountNumbers.indexOf(lastAccno) + 1;
+            if (startIndex <= 0) {
+                logger.warn("lastAccno not found in account numbers. Starting from the first account.");
+                startIndex = 0;
+            }
+        }
+        List<String> accountsToProcess = accountNumbers.subList(startIndex, accountNumbers.size());
+
+        // Adjust to process only requested records
+        accountsToProcess = accountsToProcess.stream().limit(requestedNumberOfRecords).collect(Collectors.toList());
+
+        // Processing using ForkJoinPool
+        List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
+        ForkJoinPool customThreadPool = new ForkJoinPool(25);
+
+        StringBuilder allRecordsBuilder = new StringBuilder();
+        int fetchedRecordsCount = 0;
+
+        for (String account : accountsToProcess) {
+            CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
+                // Prepare input/output objects
+                Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+                Ls400InpEnqType input2 = new Ls400InpEnqType();
+                Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+                Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+                Ls400OutputResponse output3 = new Ls400OutputResponse();
+
+                input1.setLs400InputAccountNumber(account);
+                input2.setLs400InpEnqType("1");
+
+                // Call JVMAVBL
+                jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
+
+                // Populate response data
+                ResponseData responseData = new ResponseData();
+                responseData.outResponse = output3.getLs400OutputResponse() != null
+                        ? output3.getLs400OutputResponse().trim()
+                        : "";
+                responseData.errno = output1.getLs400OutputErrorNumber();
+                responseData.lacctno = account;
+
+                logger.info("Processed account: {} - Response: {}", account, responseData.outResponse);
+                return responseData;
+            }, customThreadPool);
+
+            futures.add(future);
+        }
+
+        // Collect results
+        for (CompletableFuture<ResponseData> future : futures) {
+            ResponseData result = future.get();
+            if (result.outResponse == null || result.outResponse.isEmpty()) {
+                logger.warn("Empty response for account: {}", result.lacctno);
+                continue;
+            }
+
+            // Process output response
+            String outResponse = result.outResponse;
+            int startIndex = 0;
+            while (startIndex + 97 <= outResponse.length()) {
+                allRecordsBuilder.append(outResponse, startIndex, startIndex + 97);
+                startIndex += 97;
+                fetchedRecordsCount++;
+            }
+        }
+
+        // Prepare final results
+        List<String> res = new ArrayList<>();
+        res.add(allRecordsBuilder.toString());
+        res.add(String.valueOf(fetchedRecordsCount));
+        if (!futures.isEmpty()) {
+            res.add(futures.get(futures.size() - 1).get().errno);
+        } else {
+            res.add("No error number available");
+        }
+
+        customThreadPool.shutdown();
+        logger.info("VC------------------------AVAILABLE BALANCE Child Service Ended------------------------VC");
+
+        return res;
+    }
+
+    private List<String> splitAccountNumbers(String accno) {
+        List<String> accountNumbers = new ArrayList<>();
+        int length = accno.length();
+        for (int i = 0; i < length; i += 16) {
+            int end = Math.min(i + 16, length);
+            accountNumbers.add(accno.substring(i, end));
+        }
+        return accountNumbers;
+    }
+
+    public class ResponseData {
+        String outResponse;
+        String errno;
+        String lacctno;
+    }
+}
