@@ -150,3 +150,94 @@ if (accountno != null && !accountno.isEmpty()) {
     accountNumbers = accountNumbers.subList(0, Math.min(numberOfRecordsToFetch, accountNumbers.size()));
     logger.info("Records to process from the start: " + accountNumbers);
 }
+
+
+
+
+----------
+
+
+public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords, String accountno) {
+    logger.info("Starting Balance Enquiry Child Service...");
+
+    // Split the input account number into chunks of 16 digits
+    List<String> accountNumbers = splitIntoChunks(accno, 16);
+    logger.info("Account Numbers to process: " + accountNumbers);
+
+    if (accountNumbers.isEmpty()) {
+        logger.error("Invalid account number input.");
+        return List.of("No valid account numbers", "0", "ERROR");
+    }
+
+    int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 30;
+    StringBuilder allRecordsBuilder = new StringBuilder();
+    int fetchedRecordsCount = 0;
+    boolean targetAccountFound = false;
+
+    // If a target account number is provided, find it
+    if (accountno != null && !accountno.isEmpty()) {
+        int index = accountNumbers.indexOf(accountno);
+        if (index != -1) {
+            targetAccountFound = true;
+            accountNumbers = accountNumbers.subList(index + 1, accountNumbers.size());
+            logger.info("Target account number found. Processing records below it: " + accountNumbers);
+        } else {
+            logger.warn("Target account number not found in the list.");
+            return List.of("Target account number not found", "0", "ERROR");
+        }
+    }
+
+    // Process accounts sequentially
+    for (String accountNumber : accountNumbers) {
+        if (fetchedRecordsCount >= numberOfRecordsToFetch) {
+            break; // Stop processing if required number of records is fetched
+        }
+
+        // Create input and output objects for each account number
+        Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+        Ls400InpEnqType input2 = new Ls400InpEnqType();
+        Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+        Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+        Ls400OutputResponse output3 = new Ls400OutputResponse();
+
+        // Set input parameters
+        input1.setLs400InputAccountNumber(accountNumber);
+        input2.setLs400InpEnqType("1");
+
+        // Call the JVMAVBL service
+        jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
+
+        String errno = output1.getLs400OutputErrorNumber();
+        String outResponse = output3.getLs400OutputResponse();
+
+        if ("0000".equals(errno)) {
+            if (outResponse != null && !outResponse.trim().isEmpty()) {
+                allRecordsBuilder.append(outResponse.trim());
+                fetchedRecordsCount++;
+                logger.info("Record fetched successfully for account: " + accountNumber);
+            } else {
+                logger.info("Empty response for account: " + accountNumber);
+            }
+        } else if ("7998".equals(errno)) {
+            logger.info("Error 7998 encountered for account: " + accountNumber + ". Stopping further processing.");
+            break;
+        } else {
+            logger.info("Error encountered for account: " + accountNumber + ", Error No: " + errno);
+        }
+    }
+
+    // If target account was not found and no records fetched
+    if (!targetAccountFound && fetchedRecordsCount == 0) {
+        logger.error("No records found or processed.");
+        return List.of("No records found", "0", "ERROR");
+    }
+
+    // Prepare response
+    List<String> res = new ArrayList<>();
+    res.add(allRecordsBuilder.toString());
+    res.add(String.valueOf(fetchedRecordsCount));
+    res.add(fetchedRecordsCount > 0 ? "0000" : "ERROR"); // Return success only if records are fetched
+
+    logger.info("Balance Enquiry Child Service completed.");
+    return res;
+}
