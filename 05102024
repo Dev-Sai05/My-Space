@@ -29,4 +29,51 @@
 						logger.info("VC------------------------Fetched ERROR_NUMBER------------------------VC" + errno);
 						}
 					}
+
+
+
+
+
+if (allowTellerBranchFlag.equals("Y")) {
+    logger.info(
+            "VC------------------------Teller&Branch Validated Sucessfully------------------------VC");
+
+    String lacctno = (cifno == null || cifno.isEmpty()) 
+                        ? "00000000000000000" 
+                        : String.format("%017d", new BigInteger(cifno));        
+
+    LsInputCustNumber input = new LsInputCustNumber();
+    LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+    LsErrorNumber error = new LsErrorNumber();
+
+    logger.info("Checking for numbers++++++++++++++++++++++++++++++++++++++" + cifno);
+    input.setLsInputCustNumber(lacctno);
+    logger.info("Checking for numbers++++++++++++++++++++++++++++++++++++++" + input);
+
+    // Call JVMCUCC
+    jvmcucc.JVMCUCC(input, error, output);
+
+    // Extract error number and validate
+    errno = error.getLsErrorNumber();
+    logger.info("VC------------------------Fetched ERROR_NUMBER------------------------VC" + errno);
+
+    if ("0000".equals(errno)) {
+        // If error number is 0000, proceed with the next step
+        String accno = output.getLsOutputAccountNumbers();
+        logger.info("Checking for numbers++++++++++++++++++++++++++++++++++++++" + accno);
+
+        // Perform balance enquiry
+        res = balance.Balance_Enquiry_Child(accno, Integer.parseInt(requestedNoOfRecords), accountno);
+        out_response = res.get(0);
+        noOfRecords = res.get(1);
+        errno = res.get(2);
+
+        logger.info("VC------------------------Fetched NO_OF_RECORDS------------------------VC" + noOfRecords);
+        logger.info("VC------------------------Fetched ERROR_NUMBER------------------------VC" + errno);
+    } else {
+        // If error number is not 0000, return it
+        logger.error("VC------------------------Error encountered------------------------VC" + errno);
+        return errno; // You can adjust the behavior here as per your requirements.
+    }
+}
 						
