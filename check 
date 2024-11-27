@@ -1,0 +1,124 @@
+package com.tcs.bancs.microservices.services;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400AccountActiveFlag;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InputAccountNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InpEnqType;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputResponse;
+
+public class BalanceEnqService_Child {
+
+    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+    JVMAVBL jvmavbl = new JVMAVBL();
+
+    public List<String> Balance_Enquiry_Child(String accno, String accountno, int requestedNumberOfRecords) {
+        logger.info("Starting Balance Enquiry Child Service...");
+
+        // Split the input account number into chunks of 16 digits
+        List<String> allAccountNumbers = splitIntoChunks(accno, 16);
+        logger.info("All Account Numbers: " + allAccountNumbers);
+
+        if (allAccountNumbers.isEmpty()) {
+            logger.error("Invalid account number input.");
+            return List.of("No valid account numbers", "0", "ERROR");
+        }
+
+        int numberOfRecordsToFetch = Math.max(requestedNumberOfRecords, 30); // Default to 30 if requested is <= 0
+        StringBuilder allRecordsBuilder = new StringBuilder();
+        int fetchedRecordsCount = 0;
+
+        // Check if a specific account number is provided
+        if (accountno != null && !accountno.isEmpty()) {
+            int index = allAccountNumbers.indexOf(accountno);
+            if (index != -1) {
+                int endIndex = Math.min(index + numberOfRecordsToFetch + 1, allAccountNumbers.size());
+                List<String> accountNumbersToProcess = allAccountNumbers.subList(index + 1, endIndex);
+                logger.info("Target account number found. Fetching records below it: " + accountNumbersToProcess);
+
+                for (String accountNumber : accountNumbersToProcess) {
+                    if (processAccountNumber(accountNumber, allRecordsBuilder)) {
+                        fetchedRecordsCount++;
+                    }
+                    if (fetchedRecordsCount >= numberOfRecordsToFetch) {
+                        break;
+                    }
+                }
+
+                return prepareResponse(allRecordsBuilder, fetchedRecordsCount);
+            } else {
+                logger.warn("Target account number not found in the output. Throwing error 7998.");
+                return List.of("", "0", "7998");
+            }
+        }
+
+        // If no specific account number is provided, proceed with the existing flow
+        logger.info("No target account number provided. Returning top records.");
+        List<String> accountNumbersToProcess = allAccountNumbers.subList(0, Math.min(numberOfRecordsToFetch, allAccountNumbers.size()));
+
+        for (String accountNumber : accountNumbersToProcess) {
+            if (processAccountNumber(accountNumber, allRecordsBuilder)) {
+                fetchedRecordsCount++;
+            }
+            if (fetchedRecordsCount >= numberOfRecordsToFetch) {
+                break;
+            }
+        }
+
+        return prepareResponse(allRecordsBuilder, fetchedRecordsCount);
+    }
+
+    private boolean processAccountNumber(String accountNumber, StringBuilder allRecordsBuilder) {
+        Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+        Ls400InpEnqType input2 = new Ls400InpEnqType();
+        Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+        Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+        Ls400OutputResponse output3 = new Ls400OutputResponse();
+
+        input1.setLs400InputAccountNumber(accountNumber);
+        input2.setLs400InpEnqType("1");
+
+        jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
+
+        String errno = output1.getLs400OutputErrorNumber();
+        String outResponse = output3.getLs400OutputResponse();
+
+        if ("0000".equals(errno)) {
+            if (outResponse != null && !outResponse.trim().isEmpty()) {
+                allRecordsBuilder.append(outResponse.trim());
+                logger.info("Record fetched successfully for account: " + accountNumber);
+                return true;
+            } else {
+                logger.warn("Empty response for account: " + accountNumber);
+            }
+        } else {
+            logger.warn("Error encountered for account: " + accountNumber + ", Error No: " + errno);
+        }
+
+        return false;
+    }
+
+    private List<String> prepareResponse(StringBuilder allRecordsBuilder, int fetchedRecordsCount) {
+        List<String> res = new ArrayList<>();
+        res.add(allRecordsBuilder.toString());
+        res.add(String.valueOf(fetchedRecordsCount));
+        res.add(fetchedRecordsCount > 0 ? "0000" : "ERROR"); // Return success only if records are fetched
+        logger.info("Balance Enquiry Child Service completed.");
+        return res;
+    }
+
+    private List<String> splitIntoChunks(String input, int chunkSize) {
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < input.length(); i += chunkSize) {
+            int end = Math.min(input.length(), i + chunkSize);
+            chunks.add(input.substring(i, end));
+        }
+        return chunks;
+    }
+}
