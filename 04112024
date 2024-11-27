@@ -1,242 +1,111 @@
-//    SBI Core Banking Project, Kondapur, Hyderabad, India.       *
-//*****************************************************************
-//                                                                *
-//                 PROGRAM - PFEnquiryService_Child.Java                *
-//                                                                *
-//*****************************************************************
-//                 P R O G R A M    H I S T O R Y                 *
-//                                                                *
-//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
-//----------------------------------------------------------------*
-//Niharika Tammana : 15/10/2024    : 24090001  :  MICROSERVICES   *
-//Naga Sai Ganesh  : 15/10/2024    : 24090001  :  MICROSERVICES   *
-//----------------------------------------------------------------*
-
 package com.tcs.bancs.microservices.services;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400AccountActiveFlag;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InputAccountNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InpEnqType;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputResponse;
 
-import java.util.concurrent.*;
+public class BalanceEnqService_Child {
 
+    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+    JVMAVBL jvmavbl = new JVMAVBL();
 
-import com.tcs.bancs.microservices.jvm.scpf.JVMPF;
-import com.tcs.bancs.microservices.jvm.scpf.LsPfBranchNumber;
-import com.tcs.bancs.microservices.jvm.scpf.LsPfTellerNo;
-import com.tcs.bancs.microservices.jvm.scpf.LsPfNumber;
-import com.tcs.bancs.microservices.jvm.scpf.LsPfCustomerNo;
-import com.tcs.bancs.microservices.jvm.scpf.LsPfDataOut;
-import com.tcs.bancs.microservices.jvm.scpf.LsPfErrorMsgNo;
-import com.tcs.bancs.microservices.jvm.scpf.LsPfRowcount;
+    public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords, String accountno) {
+        logger.info("Starting Balance Enquiry Child Service...");
 
-public class PFEnquiryService_Child {
+        // Split the input account number into chunks of 16 digits
+        List<String> accountNumbers = splitIntoChunks(accno, 16);
+        logger.info("Account Numbers to process: " + accountNumbers);
 
-    Logger logger = LoggerFactory.getLogger(PFEnquiryService_Child.class);
-    JVMPF jvmpf = new JVMPF();
-    
-    
-    public List<String> callPFEnquiryChild(String branchno, String tellerno, String pfno, String cifno, int requestedNumberOfRecords, String lastrow) throws InterruptedException, ExecutionException {
-    	
-    	logger.info("VC------------------------PF Enquiry Child Service Started------------------------VC");
-    	
-        int Rowcount = lastrow.equals("0") ? 0 : Integer.parseInt(lastrow)+1;
+        if (accountNumbers.isEmpty()) {
+            logger.error("Invalid account number input.");
+            return List.of("No valid account numbers", "0", "ERROR");
+        }
 
-        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 60;
+        int numberOfRecordsToFetch = Math.max(requestedNumberOfRecords, 30); // Default to 30 if requested is <= 0
 
-        List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
-        
-        ForkJoinPool customThreadPool = new ForkJoinPool(25);
-
-        int fetchedRecordsCount = 0;
-
-        StringBuilder allRecordsBuilder = new StringBuilder();
-        
-            while (fetchedRecordsCount < numberOfRecordsToFetch) {
-            	
-                final int currentRowcount = Rowcount;
-                
-                CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
-            	LsPfBranchNumber	pfinput1	= new LsPfBranchNumber();
-            	LsPfTellerNo		pfinput2	= new LsPfTellerNo();
-                LsPfNumber 			pfinput3 	= new LsPfNumber();
-                LsPfCustomerNo 		pfinput4	= new LsPfCustomerNo();
-                LsPfDataOut 		pfoutput1 	= new LsPfDataOut();
-                LsPfErrorMsgNo 		pfoutput2 	= new LsPfErrorMsgNo();
-                LsPfRowcount 		pfoutput3 	= new LsPfRowcount();
-                
-                pfinput1.setLsPfBranchNumber(String.format("%016d", Integer.parseInt(branchno)));
-                pfinput2.setLsPfTellerNo(String.format("%016d", Integer.parseInt(tellerno)));
-                pfinput3.setLsPfNumber(pfno);
-                pfoutput3.setLsPfRowcount(currentRowcount);
-    
-                jvmpf.JVMPF(pfinput1, pfinput2, pfinput3, pfinput4, pfoutput1, pfoutput2, pfoutput3);
-                ResponseData responseData = new ResponseData();
-                responseData.outResponse  = pfoutput1.getLsPfDataOut();
-                responseData.errno        = pfoutput2.getLsPfErrorMsgNo();
-                responseData.rowcount     = pfoutput3.getLsPfRowcount()+1;
-                return responseData;
-            }, customThreadPool);
-
-            futures.add(future);
-            
-            ResponseData lastResult = futures.get(futures.size() - 1).get();
-
-            if (lastResult.outResponse == null || lastResult.outResponse.trim().isEmpty()) {
-                logger.error("No outResponse from JVMSCPF. Terminating process.");
-              
-                break; 
-            }
-            Rowcount = lastResult.rowcount;
-            String outResponse = lastResult.outResponse;
-            int startIndex = 0;
-            int endIndex = 0;
-
-
-            while (startIndex + 139 <= outResponse.length() && fetchedRecordsCount < numberOfRecordsToFetch) {
-                endIndex = startIndex + 139;
-                allRecordsBuilder.append(outResponse.substring(startIndex, endIndex)); 
-                startIndex = endIndex;
-                fetchedRecordsCount++; 
+        // If accountno is provided, check its presence and fetch records below it
+        if (accountno != null && !accountno.isEmpty()) {
+            int index = accountNumbers.indexOf(accountno);
+            if (index != -1) {
+                int endIndex = Math.min(index + numberOfRecordsToFetch + 1, accountNumbers.size());
+                logger.info("Target account number found. Fetching records below it.");
+                List<String> result = accountNumbers.subList(index + 1, endIndex);
+                logger.info("Records fetched for the given account number: " + result);
+                return processRecordsSequentially(result);
+            } else {
+                logger.warn("Target account number not found in the input. Throwing error 7998.");
+                return List.of("", "0", "7998");
             }
         }
 
-        List<String> res = new ArrayList<>();
-        res.add(allRecordsBuilder.toString());
-        
-       
-        res.add(String.valueOf(fetchedRecordsCount));
-        res.add(futures.get(futures.size() - 1).get().errno);
-        logger.info("VC------------------------PF Enquiry Child Service Ended------------------------VC");
-        customThreadPool.shutdown();
-        return res;
-        
-    }
-    
-    private class ResponseData {
-		int  rowcount;
-		String outResponse;
-        String errno;
+        // If no accountno is provided, follow the existing flow
+        logger.info("No target account number provided. Returning top records.");
+        List<String> result = accountNumbers.subList(0, Math.min(numberOfRecordsToFetch, accountNumbers.size()));
+        logger.info("Records fetched without a target account number: " + result);
+        return processRecordsSequentially(result);
     }
 
-}
-
-
-
-
-
-
-
-
-import io.github.resilience4j.circuitbreaker.CircuitBreaker;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
-import io.github.resilience4j.decorators.Decorators;
-import java.time.Duration;
-
-public class PFEnquiryService_Child {
-
-    private static final Logger logger = LoggerFactory.getLogger(PFEnquiryService_Child.class);
-    private final JVMPF jvmpf = new JVMPF();
-    private final CircuitBreaker circuitBreaker;
-
-    public PFEnquiryService_Child() {
-        // Configure the Circuit Breaker
-        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
-                .failureRateThreshold(50) // Open the circuit if 50% of calls fail
-                .slidingWindowSize(10)    // Consider the last 10 calls
-                .waitDurationInOpenState(Duration.ofSeconds(10)) // Wait 10 seconds before retrying
-                .build();
-
-        CircuitBreakerRegistry registry = CircuitBreakerRegistry.of(config);
-        circuitBreaker = registry.circuitBreaker("jvmpfCircuitBreaker");
-    }
-
-    public List<String> callPFEnquiryChild(String branchno, String tellerno, String pfno, String cifno, int requestedNumberOfRecords, String lastrow) throws InterruptedException, ExecutionException {
-        logger.info("VC------------------------PF Enquiry Child Service Started------------------------VC");
-
-        return Decorators.ofSupplier(() -> {
-            try {
-                return executePFEnquiry(branchno, tellerno, pfno, cifno, requestedNumberOfRecords, lastrow);
-            } catch (Exception e) {
-                logger.error("Error during PF Enquiry call: ", e);
-                throw e;
-            }
-        })
-        .withCircuitBreaker(circuitBreaker)
-        .get();
-    }
-
-    private List<String> executePFEnquiry(String branchno, String tellerno, String pfno, String cifno, int requestedNumberOfRecords, String lastrow) throws InterruptedException, ExecutionException {
-
-        int Rowcount = lastrow.equals("0") ? 0 : Integer.parseInt(lastrow) + 1;
-        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 60;
-        List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
-        ForkJoinPool customThreadPool = new ForkJoinPool(25);
-        int fetchedRecordsCount = 0;
+    private List<String> processRecordsSequentially(List<String> accountNumbers) {
         StringBuilder allRecordsBuilder = new StringBuilder();
+        int fetchedRecordsCount = 0;
 
-        while (fetchedRecordsCount < numberOfRecordsToFetch) {
-            final int currentRowcount = Rowcount;
+        for (String accountNumber : accountNumbers) {
+            // Create input and output objects for each account number
+            Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+            Ls400InpEnqType input2 = new Ls400InpEnqType();
+            Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+            Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+            Ls400OutputResponse output3 = new Ls400OutputResponse();
 
-            CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> {
-                LsPfBranchNumber pfinput1 = new LsPfBranchNumber();
-                LsPfTellerNo pfinput2 = new LsPfTellerNo();
-                LsPfNumber pfinput3 = new LsPfNumber();
-                LsPfCustomerNo pfinput4 = new LsPfCustomerNo();
-                LsPfDataOut pfoutput1 = new LsPfDataOut();
-                LsPfErrorMsgNo pfoutput2 = new LsPfErrorMsgNo();
-                LsPfRowcount pfoutput3 = new LsPfRowcount();
+            // Set input parameters
+            input1.setLs400InputAccountNumber(accountNumber);
+            input2.setLs400InpEnqType("1");
 
-                pfinput1.setLsPfBranchNumber(String.format("%016d", Integer.parseInt(branchno)));
-                pfinput2.setLsPfTellerNo(String.format("%016d", Integer.parseInt(tellerno)));
-                pfinput3.setLsPfNumber(pfno);
-                pfoutput3.setLsPfRowcount(currentRowcount);
+            // Call the JVMAVBL service
+            jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
 
-                jvmpf.JVMPF(pfinput1, pfinput2, pfinput3, pfinput4, pfoutput1, pfoutput2, pfoutput3);
-                ResponseData responseData = new ResponseData();
-                responseData.outResponse = pfoutput1.getLsPfDataOut();
-                responseData.errno = pfoutput2.getLsPfErrorMsgNo();
-                responseData.rowcount = pfoutput3.getLsPfRowcount() + 1;
-                return responseData;
-            }, customThreadPool);
+            String errno = output1.getLs400OutputErrorNumber();
+            String outResponse = output3.getLs400OutputResponse();
 
-            futures.add(future);
-
-            ResponseData lastResult = futures.get(futures.size() - 1).get();
-
-            if (lastResult.outResponse == null || lastResult.outResponse.trim().isEmpty()) {
-                logger.error("No outResponse from JVMSCPF. Terminating process.");
+            if ("0000".equals(errno)) {
+                if (outResponse != null && !outResponse.trim().isEmpty()) {
+                    allRecordsBuilder.append(outResponse.trim());
+                    fetchedRecordsCount++;
+                    logger.info("Record fetched successfully for account: " + accountNumber);
+                } else {
+                    logger.warn("Empty response for account: " + accountNumber);
+                }
+            } else if ("7998".equals(errno)) {
+                logger.warn("Error 7998 encountered for account: " + accountNumber + ". Stopping further processing.");
                 break;
-            }
-
-            Rowcount = lastResult.rowcount;
-            String outResponse = lastResult.outResponse;
-            int startIndex = 0;
-            int endIndex = 0;
-
-            while (startIndex + 139 <= outResponse.length() && fetchedRecordsCount < numberOfRecordsToFetch) {
-                endIndex = startIndex + 139;
-                allRecordsBuilder.append(outResponse.substring(startIndex, endIndex));
-                startIndex = endIndex;
-                fetchedRecordsCount++;
+            } else {
+                logger.warn("Error encountered for account: " + accountNumber + ", Error No: " + errno);
             }
         }
 
+        // Prepare response
         List<String> res = new ArrayList<>();
         res.add(allRecordsBuilder.toString());
         res.add(String.valueOf(fetchedRecordsCount));
-        res.add(futures.get(futures.size() - 1).get().errno);
-        logger.info("VC------------------------PF Enquiry Child Service Ended------------------------VC");
-        customThreadPool.shutdown();
+        res.add(fetchedRecordsCount > 0 ? "0000" : "ERROR"); // Return success only if records are fetched
         return res;
     }
 
-    private class ResponseData {
-        int rowcount;
-        String outResponse;
-        String errno;
+    private List<String> splitIntoChunks(String input, int chunkSize) {
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < input.length(); i += chunkSize) {
+            int end = Math.min(input.length(), i + chunkSize);
+            chunks.add(input.substring(i, end));
+        }
+        return chunks;
     }
 }
