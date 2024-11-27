@@ -1,35 +1,141 @@
 						if (allowTellerBranchFlag.equals("Y")) {
-							logger.info(
-									"VC------------------------Teller&Branch Validated Sucessfully------------------------VC");
-							
-							String lacctno = (cifno == null || cifno.isEmpty()) ? "00000000000000000" : String.format("%017d", new BigInteger(cifno));	
+						    logger.info(
+						            "VC------------------------Teller&Branch Validated Sucessfully------------------------VC");
 
-					        LsInputCustNumber input = new LsInputCustNumber();
-					        LsOutputAccountNumbers output = new LsOutputAccountNumbers();
-					        LsErrorNumber error = new LsErrorNumber();
-					        logger.info(
-									"Checking for numbers++++++++++++++++++++++++++++++++++++++" + cifno);
-					        input.setLsInputCustNumber(lacctno);
-					        logger.info(
-									"Checking for numbers++++++++++++++++++++++++++++++++++++++" + input);
-					        // Call JVMCUCC
-					        jvmcucc.JVMCUCC(input, error, output);
+						    String lacctno = (cifno == null || cifno.isEmpty()) 
+						                        ? "00000000000000000" 
+						                        : String.format("%017d", new BigInteger(cifno));        
 
-					        // Extract and validate the output
-					        String accno = output.getLsOutputAccountNumbers();
-					         errno = error.getLsErrorNumber();
-							logger.info("VC------------------------Fetched ERROR_NUMBER------------------------VC" + errno);
-					        logger.info(
-									"Checking for numbers++++++++++++++++++++++++++++++++++++++" + accno);
-						res = balance.Balance_Enquiry_Child(accno, Integer.parseInt(requestedNoOfRecords), accountno);
-						out_response = res.get(0);
-						noOfRecords = res.get(1);
-						logger.info("VC------------------------Fetched NO_OF_RECORDS------------------------VC" + noOfRecords);
-						errno = res.get(2);
-						logger.info("VC------------------------Fetched ERROR_NUMBER------------------------VC" + errno);
+						    LsInputCustNumber input = new LsInputCustNumber();
+						    LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+						    LsErrorNumber error = new LsErrorNumber();
+
+						    logger.info("Checking for numbers++++++++++++++++++++++++++++++++++++++" + cifno);
+						    input.setLsInputCustNumber(lacctno);
+						    logger.info("Checking for numbers++++++++++++++++++++++++++++++++++++++" + input);
+
+						    // Call JVMCUCC
+						    jvmcucc.JVMCUCC(input, error, output);
+
+						    // Extract error number and validate
+						    errno = error.getLsErrorNumber();
+						    logger.info("VC------------------------Fetched ERROR_NUMBER------------------------VC" + errno);
+
+						    if ("0000".equals(errno)) {
+						        // If error number is 0000, proceed with the next step
+						        String accno = output.getLsOutputAccountNumbers();
+						        logger.info("Checking for numbers++++++++++++++++++++++++++++++++++++++" + accno);
+
+						        // Perform balance enquiry
+						        res = balance.Balance_Enquiry_Child(accno, Integer.parseInt(requestedNoOfRecords), accountno);
+						        out_response = res.get(0);
+						        noOfRecords = res.get(1);
+						        errno = res.get(2);
+
+						        logger.info("VC------------------------Fetched NO_OF_RECORDS------------------------VC" + noOfRecords);
+						        logger.info("VC------------------------Fetched ERROR_NUMBER------------------------VC" + errno);
+						    } else {
+						        // If error number is not 0000, return it
+						        logger.error("VC------------------------Error encountered------------------------VC" + errno);
+						        return errno; // You can adjust the behavior here as per your requirements.
+						    }
 						}
+							
+					else {
+						errno = "VC011";
+						errDesc = errdesc.getCbsErrDesc(errno, callcode, opt, lsRecArea);
+						finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+						migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
 					}
+				}
+					else {
+					errno = "VC010";
+					errDesc = error.getProperty(errno);
+					if(errDesc == null || errDesc.trim().equals("")) {
+			    		logger.error("Error Description Not Found!");
+			    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+			    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );					
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+			    	}
+			    	else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+			    	}
+				}
+			}
+			
+			else {
+				errno = "VC009";
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+		    		logger.error("Error Description Not Found!");
+		    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+		    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    	else {
+				finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+				migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+			}
+			}
+		
+		else {
+			errno = "VC001";
+			errDesc = error.getProperty(errno);
+			if(errDesc == null || errDesc.trim().equals("")) {
+	    		logger.error("Error Description Not Found!");
+	    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+	    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+	    	}
+	    	else {
+			finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+			logger.info("++++++++++++++++++++++++"+Base64.getEncoder().encodeToString(("".toString()).getBytes()));
+			migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+			return new ResponseEntity(finalResponse, HttpStatus.OK);
+	    	}
+		}  
+	    	}
 
+	    	else {
+	    		errno = "VC001";
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+		    		logger.error("Error Description Not Found!");
+		    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+		    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    	else {
+				finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+				migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+	    	}
+	    		}
+
+		if (errno.equals("0000") || (errno.equals("0155") && !out_response.trim().isEmpty()) || (errno.equals("0188") && !out_response.trim().isEmpty())) {
+			errno = "0000";
+			finalResponse = responseObj.getResponse(res_file_path, out_response, refno, noOfRecords);
+			migDetails.updateResponse("0", errno, "OK SUCCESS",
+					Base64.getEncoder().encodeToString((finalResponse).getBytes()), "success", entryDate, refno);
+		} else {
+			errDesc = errdesc.getCbsErrDesc(errno, callcode, opt, lsRecArea);
+			finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+			migDetails.updateResponse("1", errno, errDesc,
+					Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure", entryDate, refno);
+		}
+		
+
+		return new ResponseEntity(finalResponse, HttpStatus.OK);
+
+	}
+
+	}
+}
 
 
 
