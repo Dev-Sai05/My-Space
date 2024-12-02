@@ -1,3 +1,35 @@
+Hello,
+
+based on your answer I have tested two ways
+
+int SExtUebergabeLen = 815;
+SExtUebergabe sExtUebergabe = new SExtUebergabe();
+int SUservgIoLen = 4711;
+SUservgIo sUservgIo = new SUservgIo();
+
+RunUnit runUnit = new RunUnit();
+
+XUSERVG xuservg = (XUSERVG) getCallable(); // creates an instance of XUSERVG
+runUnit.Add((IObjectControl) xuservg);
+retValue = xuservg.XUSERVG(SExtUebergabeLen, sExtUebergabe, SUservgIoLen, sUservgIo);
+
+This works like a charm but runUnit.Call is not working (or at least I do not understand how to use it) so :
+
+int SExtUebergabeLen = 815;
+
+SExtUebergabe sExtUebergabe = new SExtUebergabe();
+int SUservgIoLen = 4711;
+SUservgIo sUservgIo = new SUservgIo();
+
+RunUnit runUnit = new RunUnit(); // XUSERVG is not instanciated and added to the RunUnit
+
+Object params [] = {SExtUebergabeLen, sExtUebergabe, SUservgIoLen, sUservgIo};
+retValue = runUnit.Call("de.lv1871.cobol.XUSERVG", params);
+
+
+------------------------
+
+
 package com.tcs.bancs.microservices.java.validatechkd;
 
 import java.util.List;
