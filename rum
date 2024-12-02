@@ -30,6 +30,45 @@ retValue = runUnit.Call("de.lv1871.cobol.XUSERVG", params);
 ------------------------
 
 
+
+public List<String> validateCHKD(String acctno) {
+    List<String> res = new ArrayList<>();
+    RunUnit runUnit = new RunUnit(); // Initialize RunUnit
+
+    try {
+        // Prepare input and output parameters
+        LsJvmChkdInpAcc input = new LsJvmChkdInpAcc();
+        LsJvmChkdAllowFlag output1 = new LsJvmChkdAllowFlag();
+        LsJvmChkdErrorNumber output2 = new LsJvmChkdErrorNumber();
+
+        input.setLsJvmChkdInpAcc(acctno);
+
+        // Example of runUnit.Call()
+        Object[] params = { input, output2, output1 };
+        runUnit.Call("com.tcs.bancs.microservices.jvm.validatechkd.CHKD01", params);
+
+        // Collect output
+        res.add(output1.getLsJvmChkdAllowFlag());
+        res.add(output2.getLsJvmChkdErrorNumber());
+    } catch (Exception e) {
+        e.printStackTrace();
+    } finally {
+        runUnit.close(); // Ensure RunUnit is closed
+    }
+
+    return res;
+}
+
+
+
+
+
+
+
+
+
+
+
 package com.tcs.bancs.microservices.java.validatechkd;
 
 import java.util.List;
