@@ -77,3 +77,94 @@ class ValidateCHKD02 {
         return result;
     }
 }
+
+
+package com.tcs.bancs.microservices.java.validatechkd;
+
+import java.util.List;
+import java.util.ArrayList;
+import com.microfocus.cobol.runtime.RunUnit;
+import com.tcs.bancs.microservices.jvm.validatechkd.CHKD01;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdInpAcc;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdAllowFlag;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdErrorNumber;
+import com.tcs.bancs.microservices.jvm.validatechkd1.CHKD02;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdInpAcc1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdAllowFlag1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdErrorNumber1;
+
+public class ValidateCheckDigit {
+
+    // Instances for CHKD01 and CHKD02
+    CHKD01 chkd01 = new CHKD01();
+    LsJvmChkdInpAcc input = new LsJvmChkdInpAcc();
+    LsJvmChkdAllowFlag output1 = new LsJvmChkdAllowFlag();
+    LsJvmChkdErrorNumber output2 = new LsJvmChkdErrorNumber();
+
+    CHKD02 chkd02 = new CHKD02();
+    LsJvmChkdInpAcc1 input1 = new LsJvmChkdInpAcc1();
+    LsJvmChkdAllowFlag1 output11 = new LsJvmChkdAllowFlag1();
+    LsJvmChkdErrorNumber1 output21 = new LsJvmChkdErrorNumber1();
+
+    public static void main(String args[]) {
+        String acctno = "95047271448"; // Account number input
+        int refno = 0;  // Reference number (for example to alternate between methods)
+
+        // Create an instance of the ValidateCheckDigit class
+        ValidateCheckDigit obj = new ValidateCheckDigit();
+
+        if (refno % 2 == 0) {
+            // If refno is even, use CHKD01
+            System.out.println(obj.validateCHKD(acctno));
+        } else {
+            // If refno is odd, use CHKD02
+            System.out.println(obj.validateCHKD1("95047271447"));
+        }
+    }
+
+    public List<String> validateCHKD(String acctno) {
+        List<String> res = new ArrayList<>(); 
+
+        try (RunUnit runUnit = new RunUnit()) {
+            // Activate the CHKD01 rununit and pass the input reference
+            runUnit.activate(CHKD01.class);
+
+            // Set the account number to the input object
+            input.setLsJvmChkdInpAcc(acctno);
+
+            // Call the COBOL method
+            chkd01.CHKD01(input, output2, output1);
+
+            // Collect the results
+            res.add(output1.getLsJvmChkdAllowFlag());
+            res.add(output2.getLsJvmChkdErrorNumber());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return res;
+    }
+
+    public List<String> validateCHKD1(String acctno) {
+        List<String> res = new ArrayList<>(); 
+
+        try (RunUnit runUnit = new RunUnit()) {
+            // Activate the CHKD02 rununit and pass the input reference
+            runUnit.activate(CHKD02.class);
+
+            // Set the account number to the input object
+            input1.setLsJvmChkdInpAcc1(acctno);
+
+            // Call the COBOL method
+            chkd02.CHKD02(input1, output21, output11);
+
+            // Collect the results
+            res.add(output11.getLsJvmChkdAllowFlag1());
+            res.add(output21.getLsJvmChkdErrorNumber1());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return res;
+    }
+}
