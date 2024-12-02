@@ -84,3 +84,76 @@ public class ValidateCheckDigit {
 			return res;
 		}
 }
+
+
+
+
+-------------
+
+
+package com.tcs.bancs.microservices.java.validatechkd;
+
+import java.util.List;
+import java.util.ArrayList;
+import com.tcs.bancs.microservices.jvm.validatechkd.CHKD01;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdInpAcc;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdAllowFlag;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdErrorNumber;
+import com.tcs.bancs.microservices.jvm.validatechkd1.CHKD02;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdInpAcc1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdAllowFlag1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdErrorNumber1;
+
+public class ValidateCheckDigit {
+
+    CHKD01 chkd01 = new CHKD01();
+    LsJvmChkdInpAcc input = new LsJvmChkdInpAcc();
+    LsJvmChkdAllowFlag output1 = new LsJvmChkdAllowFlag();
+    LsJvmChkdErrorNumber output2 = new LsJvmChkdErrorNumber();
+
+    CHKD02 chkd02 = new CHKD02();
+    LsJvmChkdInpAcc1 input1 = new LsJvmChkdInpAcc1();
+    LsJvmChkdAllowFlag1 output11 = new LsJvmChkdAllowFlag1();
+    LsJvmChkdErrorNumber1 output21 = new LsJvmChkdErrorNumber1();
+
+    public static void main(String args[]) {
+        // Define four account numbers as inputs
+        String[] accountNumbers = {"95047271448", "95047271449", "95047271450", "95047271451"};
+        
+        ValidateCheckDigit obj = new ValidateCheckDigit();
+
+        for (int i = 0; i < accountNumbers.length; i++) {
+            if (i % 2 == 0) { // Even index
+                System.out.println("Even Input: " + accountNumbers[i]);
+                System.out.println(obj.validateCHKD(accountNumbers[i]));
+            } else { // Odd index
+                System.out.println("Odd Input: " + accountNumbers[i]);
+                System.out.println(obj.validateCHKD1(accountNumbers[i]));
+            }
+        }
+    }
+
+    public List<String> validateCHKD(String acctno) {
+        List<String> res = new ArrayList<>();
+
+        input.setLsJvmChkdInpAcc(acctno);
+        chkd01.CHKD01(input, output2, output1);
+
+        res.add(output1.getLsJvmChkdAllowFlag());
+        res.add(output2.getLsJvmChkdErrorNumber());
+
+        return res;
+    }
+
+    public List<String> validateCHKD1(String acctno) {
+        List<String> res = new ArrayList<>();
+
+        input1.setLsJvmChkdInpAcc1(acctno);
+        chkd02.CHKD02(input1, output21, output11);
+
+        res.add(output11.getLsJvmChkdAllowFlag1());
+        res.add(output21.getLsJvmChkdErrorNumber1());
+
+        return res;
+    }
+}
