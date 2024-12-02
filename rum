@@ -1,1 +1,75 @@
 https://community.rocketsoftware.com/discussion/jvm-rununit-call-string-object-problem#bm7af562e1-f57c-4dd1-8c6f-2eff5c4de6e3
+
+
+
+package com.tcs.bancs.microservices.java.validatechkd;
+
+import java.util.List;
+import java.util.ArrayList;
+import com.microfocus.cobol.runtime.RunUnit;
+import com.tcs.bancs.microservices.jvm.validatechkd.CHKD01;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdInpAcc;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdAllowFlag;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdErrorNumber;
+import com.tcs.bancs.microservices.jvm.validatechkd1.CHKD02;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdInpAcc1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdAllowFlag1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdErrorNumber1;
+
+public class ValidateCheckDigit {
+
+    public static void main(String[] args) {
+        // Define account numbers as inputs
+        String[] accountNumbers = {"95047271448", "95047271449", "95047271450", "95047271451"};
+
+        for (int i = 0; i < accountNumbers.length; i++) {
+            if (i % 2 == 0) { // Even index
+                try (RunUnit runUnit1 = new RunUnit()) {
+                    System.out.println("Even Input: " + accountNumbers[i]);
+                    ValidateCHKD01 validateCHKD01 = runUnit1.activate(ValidateCHKD01.class);
+                    System.out.println(validateCHKD01.validateAsString(accountNumbers[i]));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else { // Odd index
+                try (RunUnit runUnit2 = new RunUnit()) {
+                    System.out.println("Odd Input: " + accountNumbers[i]);
+                    ValidateCHKD02 validateCHKD02 = runUnit2.activate(ValidateCHKD02.class);
+                    System.out.println(validateCHKD02.validateAsString(accountNumbers[i]));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+}
+
+// Separate class for CHKD01 logic
+class ValidateCHKD01 {
+    public String validateAsString(String acctno) {
+        CHKD01 chkd01 = new CHKD01();
+        LsJvmChkdInpAcc input = new LsJvmChkdInpAcc();
+        LsJvmChkdAllowFlag output1 = new LsJvmChkdAllowFlag();
+        LsJvmChkdErrorNumber output2 = new LsJvmChkdErrorNumber();
+
+        input.setLsJvmChkdInpAcc(acctno);
+        chkd01.CHKD01(input, output2, output1);
+
+        return "AllowFlag: " + output1.getLsJvmChkdAllowFlag() + ", ErrorNumber: " + output2.getLsJvmChkdErrorNumber();
+    }
+}
+
+// Separate class for CHKD02 logic
+class ValidateCHKD02 {
+    public String validateAsString(String acctno) {
+        CHKD02 chkd02 = new CHKD02();
+        LsJvmChkdInpAcc1 input1 = new LsJvmChkdInpAcc1();
+        LsJvmChkdAllowFlag1 output11 = new LsJvmChkdAllowFlag1();
+        LsJvmChkdErrorNumber1 output21 = new LsJvmChkdErrorNumber1();
+
+        input1.setLsJvmChkdInpAcc1(acctno);
+        chkd02.CHKD02(input1, output21, output11);
+
+        return "AllowFlag: " + output11.getLsJvmChkdAllowFlag1() + ", ErrorNumber: " + output21.getLsJvmChkdErrorNumber1();
+    }
+}
