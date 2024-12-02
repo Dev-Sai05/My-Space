@@ -60,6 +60,112 @@ public List<String> validateCHKD(String acctno) {
 }
 
 
+--------------------Temolen
+
+package com.tcs.bancs.microservices.java.validatechkd;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.microfocus.cobol.runtime.RunUnit;
+
+import com.tcs.bancs.microservices.jvm.validatechkd.CHKD01;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdInpAcc;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdAllowFlag;
+import com.tcs.bancs.microservices.jvm.validatechkd.LsJvmChkdErrorNumber;
+
+import com.tcs.bancs.microservices.jvm.validatechkd1.CHKD02;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdInpAcc1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdAllowFlag1;
+import com.tcs.bancs.microservices.jvm.validatechkd1.LsJvmChkdErrorNumber1;
+
+public class ValidateCheckDigit {
+
+    public static void main(String[] args) {
+        String acctno = "95047271448"; // Input account number
+        int refno = 0; // Reference number
+
+        ValidateCheckDigit validator = new ValidateCheckDigit();
+        List<String> result;
+
+        // Check reference number and call respective method
+        if (refno % 2 == 0) {
+            result = validator.validateCHKD(acctno);
+        } else {
+            result = validator.validateCHKD1("95047271447");
+        }
+
+        // Print results
+        System.out.println("Validation Results: " + result);
+    }
+
+    public List<String> validateCHKD(String acctno) {
+        List<String> res = new ArrayList<>();
+        RunUnit runUnit = new RunUnit(); // Initialize RunUnit
+
+        try {
+            // Prepare input and output parameters
+            LsJvmChkdInpAcc input = new LsJvmChkdInpAcc();
+            LsJvmChkdAllowFlag output1 = new LsJvmChkdAllowFlag();
+            LsJvmChkdErrorNumber output2 = new LsJvmChkdErrorNumber();
+
+            input.setLsJvmChkdInpAcc(acctno);
+
+            // Use runUnit.Call to invoke CHKD01
+            Object[] params = { input, output2, output1 };
+            runUnit.Call("com.tcs.bancs.microservices.jvm.validatechkd.CHKD01", params);
+
+            // Collect output
+            res.add(output1.getLsJvmChkdAllowFlag());
+            res.add(output2.getLsJvmChkdErrorNumber());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            runUnit.close(); // Ensure RunUnit is closed
+        }
+
+        return res;
+    }
+
+    public List<String> validateCHKD1(String acctno) {
+        List<String> res = new ArrayList<>();
+        RunUnit runUnit = new RunUnit(); // Initialize RunUnit
+
+        try {
+            // Prepare input and output parameters
+            LsJvmChkdInpAcc1 input1 = new LsJvmChkdInpAcc1();
+            LsJvmChkdAllowFlag1 output11 = new LsJvmChkdAllowFlag1();
+            LsJvmChkdErrorNumber1 output21 = new LsJvmChkdErrorNumber1();
+
+            input1.setLsJvmChkdInpAcc1(acctno);
+
+            // Use runUnit.Call to invoke CHKD02
+            Object[] params = { input1, output21, output11 };
+            runUnit.Call("com.tcs.bancs.microservices.jvm.validatechkd1.CHKD02", params);
+
+            // Collect output
+            res.add(output11.getLsJvmChkdAllowFlag1());
+            res.add(output21.getLsJvmChkdErrorNumber1());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            runUnit.close(); // Ensure RunUnit is closed
+        }
+
+        return res;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
