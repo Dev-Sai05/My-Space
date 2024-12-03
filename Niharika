@@ -1,0 +1,251 @@
+//           SBI Core Banking Project, Hyderabad, India.          *
+//*****************************************************************
+//                                                                *
+//  	           PROGRAM - PFMOBEnquiryService.Java                 
+//                                                                *
+//*****************************************************************
+//                 P R O G R A M    H I S T O R Y                 *
+//                                                                *
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+//----------------------------------------------------------------*
+//Niharika Tammana : 15/10/2024    : 24090001  :  MICROSERVICES   *
+//Naga Sai Ganesh  : 15/10/2024    : 24090001  :  MICROSERVICES   *
+//----------------------------------------------------------------*
+
+package com.tcs.bancs.microservices.services;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.sql.rowset.serial.SerialException;
+import javax.validation.Valid;
+
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.gson.Gson;
+import com.tcs.bancs.microservices.aggregator.AggregationServiceImpl;
+import com.tcs.bancs.microservices.config.CacheConfig;
+import com.tcs.bancs.microservices.configuration.PropertyLoader;
+import com.tcs.bancs.microservices.exception.RrnException;
+import com.tcs.bancs.microservices.exception.SrcException;
+import com.tcs.bancs.microservices.impl.MigenqDetailsRepositoryImpl;
+import com.tcs.bancs.microservices.util.FrameworkConstants;
+import com.tcs.bancs.microservices.java.dbconnection.DBConnection;
+import com.tcs.bancs.microservices.java.txtm.Error_Description;
+import com.tcs.bancs.microservices.jvm.scpf.JVMUTENV;
+import com.tcs.bancs.microservices.jvm.scpf.JvmLsCallCode;
+import com.tcs.bancs.microservices.jvm.scpf.JvmLsOptCode;
+import com.tcs.bancs.microservices.jvm.scpf.JvmLsEnvRecordArea;
+import com.tcs.bancs.microservices.reqbean.RequestBean_PFMOB;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+
+import java.util.concurrent.*;
+
+@RestController
+@Api(value = "Aggregation_API", description = " ", tags = { "Aggregation API" })
+@RequestMapping("/")
+@Cacheable
+@CacheEvict
+public class PFMOBEnquiryService {
+
+//////////////////////////////////////////////////////////////////////////--------ENV VARIABLES STARTED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+	@Autowired
+	AggregationServiceImpl aggregationServiceImpl;
+
+	@Autowired
+	MigenqDetailsRepositoryImpl migDetails;;
+
+	@Value("${UTENVCALS-BANCS-TRACE-STATE}")
+	private String bancsTraceState;
+
+	@Value("${UTENVCALS-MASTER-DQPTYPE}")
+	private String masterDQType;
+
+	@Value("${UTENVCALS-BANCS-HOST}")
+	private String bancsHost;
+
+	@Value("${UTENVCALS-FNS-SYSNUM}")
+	private String fnsSysnum;
+
+	@Value("${UTENVCALS-CTRL-SYSNUM}")
+	private String ctrlSysnum;
+
+	@Value("${UTENVCALS-DAY-SYSNUM}")
+	private String daySysnum;
+
+	@Value("${UTENVCALS-NIGHT-SYSNUM}")
+	private String nightSysnum;
+
+	@Value("${UTENVCALS-NON24H-SYSNUM}")
+	private String non24hsum;
+
+	@Value("${UTENVCALS-DEF-RMODE}")
+	private String defRMode;
+
+	@Value("${UTENVCALS-MASTER-DB-1}")
+	private String masterDB1;
+
+	@Value("${UTENVCALS-MASTER-DB-2}")
+	private String masterDB2;
+
+	@Value("${UTENVCALS-SERVICES-FLAG}")
+	private String servicesFlag;
+
+	@Value("${VC-MS-SERVICE-ID}")
+	private String serviceid;
+	
+	@Value("${pf.response.outline.location}")
+	private String PF_RES_FILE_PATH;
+	
+	@Value("${mob.response.outline.location}")
+	private String MOB_RES_FILE_PATH;
+	
+	@Value("${UTENVCALS-INSPARAM-FLAG}")
+	private String INSPARAM_FLAG;
+	
+	@Value("${UTENVCALS-INSPARAM-VALUE}")
+	private String INSPARAM_VALUE;
+	
+//////////////////////////////////////////////////////////////////////////--------ENV VARIABLES ENDED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+	Logger logger = LoggerFactory.getLogger(PFMOBEnquiryService.class);
+	
+//////////////////////////////////////////////////////////////////////////--------PATH FILES READING STARTED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+	String ErrorCodeMasterFilePath = CacheConfig.frameworkConfigProperties
+			.getProperty(FrameworkConstants.LOOKUP_FILES_PATH);
+	String sourceAuth = CacheConfig.frameworkConfigProperties.getProperty(FrameworkConstants.LOOKUP_FILES_PATH);
+	String ipConfig = CacheConfig.frameworkConfigProperties.getProperty(FrameworkConstants.LOOKUP_FILES_PATH);
+	Properties error = PropertyLoader
+			.readPropertyFile(new String(ErrorCodeMasterFilePath + "/ErrorCodeMaster.properties"));
+	Properties sId = PropertyLoader.readPropertyFile(new String(sourceAuth + "/SourceIdList.properties"));
+	Properties ipprop = PropertyLoader.readPropertyFile(new String(ipConfig + "/IpConfigMaster.properties"));
+	
+//////////////////////////////////////////////////////////////////////////--------PATH FILES READING ENDED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+	private final DBConnection dbconnection;
+	private final Response responseObj;
+
+	@Autowired
+	public PFMOBEnquiryService(DBConnection dbconnection, Response responseObj) {
+		this.dbconnection = dbconnection;
+		this.responseObj = responseObj;
+	}
+	
+	@InitBinder
+	public void initBinder(WebDataBinder binder) {
+		binder.setDisallowedFields(new String[] {});
+	}
+	
+//////////////////////////////////////////////////////////////////////////-------- OBJECTS CREATION STARTED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+	ErrorResponse 			errobj 		= new ErrorResponse();
+	Error_Description 		errdesc 	= new Error_Description();
+	Validate_Teller_Branch 	validate 	= new Validate_Teller_Branch();
+
+	JVMUTENV 				jvmutenv 	= new JVMUTENV();
+	JvmLsCallCode 			callCode 	= new JvmLsCallCode();
+	JvmLsOptCode 			optcode 	= new JvmLsOptCode();
+	JvmLsEnvRecordArea 		commonarea 	= new JvmLsEnvRecordArea();
+
+	PFEnquiryService_Child 	pfchild 	= new PFEnquiryService_Child();
+	MOBEnquiryService_Child mobchild 	= new MOBEnquiryService_Child();
+
+	InputValidations 		inpval 		= new InputValidations();
+	Gson gson = new Gson();
+//////////////////////////////////////////////////////////////////////////-------- OBJECTS CREATION ENDED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//queue fix
+	  // Load Balancer Executor for managing concurrent requests
+	private final ExecutorService singleThreadExecutor = Executors.newSingleThreadExecutor();
+	private final BlockingQueue<Callable<ResponseEntity<Object>>> requestQueue = new LinkedBlockingQueue<>();
+//queue fix
+    
+	@SuppressWarnings({ "unchecked", "rawtypes"})
+	@ApiOperation(value = "Call PFMOB", notes = "PFMOB Service:This API is used to fetch Customer Details.")
+	@PostMapping(value = { "/PFMOBEnq" }, produces = { "application/json" })
+	@CrossOrigin()
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	@Validated
+	public ResponseEntity<Object> getCustomerDetails(@RequestBody(required = false) @Valid RequestBean_PFMOB reqbean,
+			HttpServletRequest request, @RequestHeader HttpHeaders headers, HttpServletResponse response)
+			throws SerialException, SQLException, IOException, RrnException, SrcException, InterruptedException, ExecutionException {
+		
+		//processOriginalRequest(reqbean.getReferenceNumber(), reqbean, request, headers, response);
+	//	return ResponseEntity.status(HttpStatus.OK).build();
+//	}
+//queue fix
+    // Prepare task to process the request
+    Callable<ResponseEntity<Object>> task = () -> processOriginalRequest(reqbean.getReferenceNumber(), reqbean, request, headers, response);
+
+    // Submit the task to the queue
+    Future<ResponseEntity<Object>> future = submitToQueue(task);
+
+    // Wait for task completion and return the result
+    logger.info("future.get()" + future.get());
+    //String dbConnection_flag = dbconnection.getCBSDBConnection("04", "", "", "");
+    return future.get();
+}
+
+ private Future<ResponseEntity<Object>> submitToQueue(Callable<ResponseEntity<Object>> task) {
+    return singleThreadExecutor.submit(() -> {
+        try {
+            // Poll and execute the next task in sequence
+            return task.call();
+        } catch (Exception e) {
+            logger.error("Error processing request", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing request");
+        }
+    });
+}
+
+    @SuppressWarnings({ "unchecked", "rawtypes"})
+    private ResponseEntity<Object> processOriginalRequest(String refno, RequestBean_PFMOB reqbean, HttpServletRequest request,
+                                        HttpHeaders headers, HttpServletResponse response) 
+            throws SQLException, IOException, SerialException, RrnException, SrcException, InterruptedException, ExecutionException {
+        
+			//some process
+			return ResponseEntity.status(HttpStatus.OK).build();
+  }
+// Graceful shutdown of the executor
+public void shutdown() {
+    singleThreadExecutor.shutdown();
+    try {
+        if (!singleThreadExecutor.awaitTermination(60, TimeUnit.SECONDS)) {
+            singleThreadExecutor.shutdownNow();
+        }
+    } catch (InterruptedException ex) {
+        singleThreadExecutor.shutdownNow();
+    }
+}
+}
