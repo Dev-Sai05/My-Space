@@ -142,3 +142,162 @@ public class BalanceEnqService_Child {
         String errno;
     }
 }
+#
+
+
+
+
+
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400AccountActiveFlag;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InputAccountNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400InpEnqType;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.Ls400OutputResponse;
+
+public class BalanceEnqService_Child {
+
+    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+
+    public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords, String lacctno1) {
+        String errno = "0000";
+        StringBuilder allRecordsBuilder = new StringBuilder();
+
+        logger.info("Starting Balance Enquiry Child Service...");
+        lacctno1 = lacctno1.substring(0, lacctno1.length() - 1);
+        String lacctno = lacctno1.equals("0000000000000000") ? "0000000000000000"
+                : String.format("%016d", new BigInteger(lacctno1));
+
+        // Split the input account number into chunks of 16 digits
+        List<String> accountNumbers = splitIntoChunks(accno, 16);
+
+        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 30;
+
+        // If a target account number is provided, adjust the list
+        if (lacctno != null && !lacctno.isEmpty() && !lacctno.equals("0000000000000000")) {
+            int index = accountNumbers.indexOf(lacctno);
+            if (index != -1) {
+                accountNumbers = accountNumbers.subList(index + 1, accountNumbers.size());
+                logger.info("Target account number found. Processing records below it");
+            } else {
+                logger.info("Target account number not found in the list.");
+                List<String> errorRes = new ArrayList<>();
+                errorRes.add("");
+                errorRes.add("0");
+                errorRes.add("108"); // Error code for not found account number
+                return errorRes;
+            }
+        }
+
+        // Create an ExecutorService for multithreading
+        ExecutorService executorService = Executors.newFixedThreadPool(10); // Use 10 threads
+        List<Future<ResponseData>> futures = new ArrayList<>();
+
+        // Submit tasks for each account number
+        for (String accountNumber : accountNumbers) {
+            Callable<ResponseData> task = () -> processAccount(accountNumber);
+            futures.add(executorService.submit(task));
+        }
+
+        int fetchedRecordsCount = 0;
+
+        // Collect results from futures
+        try {
+            for (Future<ResponseData> future : futures) {
+                ResponseData responseData = future.get();
+                if ("0000".equals(responseData.errno)) {
+                    allRecordsBuilder.append(responseData.outResponse.trim());
+                    fetchedRecordsCount++;
+                } else if ("0155".equals(responseData.errno)) {
+                    errno = "0155";
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error while processing accounts in parallel", e);
+            errno = "188";
+        } finally {
+            executorService.shutdown();
+        }
+
+        // Prepare the response
+        if (fetchedRecordsCount == 0) {
+            errno = "188";
+        }
+        List<String> res = new ArrayList<>();
+        res.add(allRecordsBuilder.toString());
+        res.add(String.valueOf(fetchedRecordsCount));
+        res.add(errno);
+
+        logger.info("Balance Enquiry Child Service completed.");
+        return res;
+    }
+
+    private ResponseData processAccount(String accountNumber) {
+        ResponseData responseData = new ResponseData();
+        responseData.errno = "0000"; // Default error number
+
+        try {
+            // Create input and output objects for each account number
+            Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+            Ls400InpEnqType input2 = new Ls400InpEnqType();
+            Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+            Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+            Ls400OutputResponse output3 = new Ls400OutputResponse();
+
+            input1.setLs400InputAccountNumber(accountNumber);
+            input2.setLs400InpEnqType("1");
+
+            // RUN FIX
+            JVMAVBL jvmavbl = new JVMAVBL();
+            RunUnit run1 = new RunUnit();
+            run1.Add(jvmavbl);
+            run1.Call("JVMAVBL", input1.get_Reference(), input2.get_Reference(), output1.get_Reference(),
+                    output2.get_Reference(), output3.get_Reference());
+
+            String errno = output1.getLs400OutputErrorNumber();
+            String outResponse = output3.getLs400OutputResponse();
+
+            if ("0000".equals(errno)) {
+                responseData.outResponse = outResponse;
+            } else {
+                responseData.errno = errno;
+            }
+        } catch (Exception e) {
+            logger.error("Error processing account number: " + accountNumber, e);
+            responseData.errno = "188";
+        }
+        return responseData;
+    }
+
+    private List<String> splitIntoChunks(String input, int chunkSize) {
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < input.length(); i += chunkSize) {
+            int end = Math.min(input.length(), i + chunkSize);
+            String chunk = input.substring(i, end).trim();
+            if (!chunk.isEmpty() && !chunk.matches("^0+$")) {
+                chunks.add(chunk);
+            }
+        }
+        return chunks;
+    }
+
+    public class ResponseData {
+        String outResponse = "";
+        String errno = "";
+    }
+}
