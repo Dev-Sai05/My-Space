@@ -252,3 +252,115 @@ public class BalanceEnqService_Child {
         String errno = "";
     }
 }
+
+
+---------
+
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords, String lacctno1) {
+    String errno = "0000";
+    StringBuilder allRecordsBuilder = new StringBuilder();
+
+    logger.info("Starting Balance Enquiry Child Service...");
+    lacctno1 = lacctno1.substring(0, lacctno1.length() - 1);
+    String lacctno = lacctno1.equals("0000000000000000") ? "0000000000000000"
+            : String.format("%016d", new BigInteger(lacctno1));
+
+    // Split the input account number into chunks of 16 digits
+    List<String> accountNumbers = splitIntoChunks(accno, 16);
+
+    // If a target account number is provided, adjust the list
+    if (lacctno != null && !lacctno.isEmpty() && !lacctno.equals("0000000000000000")) {
+        int index = accountNumbers.indexOf(lacctno);
+        if (index != -1) {
+            accountNumbers = accountNumbers.subList(index + 1, accountNumbers.size());
+            logger.info("Target account number found. Processing records below it.");
+        } else {
+            logger.info("Target account number not found in the list.");
+            List<String> errorRes = new ArrayList<>();
+            errorRes.add("");
+            errorRes.add("0");
+            errorRes.add("108"); // Error code for not found account number
+            return errorRes;
+        }
+    }
+
+    // AtomicInteger to track the number of records fetched
+    final AtomicInteger fetchedRecordsCount = new AtomicInteger(0);
+    final AtomicInteger taskCompletedCount = new AtomicInteger(0); // Track completed tasks
+
+    // List to hold CompletableFuture tasks
+    List<CompletableFuture<ResponseData>> futures = new ArrayList<>();
+
+    // Loop through account numbers and process asynchronously
+    for (String accountNumber : accountNumbers) {
+        // Submit the task asynchronously
+        CompletableFuture<ResponseData> future = CompletableFuture.supplyAsync(() -> processAccount(accountNumber))
+            .thenApply(response -> {
+                // If error code is 0000, process the record
+                if ("0000".equals(response.errno)) {
+                    // Check if we still need more records
+                    if (fetchedRecordsCount.get() < requestedNumberOfRecords) {
+                        allRecordsBuilder.append(response.outResponse.trim());
+                        fetchedRecordsCount.incrementAndGet(); // Update the count
+                    }
+                } else if ("0155".equals(response.errno)) {
+                    // Handle error code 0155 and stop further processing
+                    errno = "0155";
+                    throw new RuntimeException("Error 0155 encountered, stopping further processing");
+                } else {
+                    // Log and skip accounts with errors
+                    logger.info("Skipping account due to error number: " + response.errno);
+                }
+
+                // Track task completion
+                taskCompletedCount.incrementAndGet();
+                return response;
+            })
+            .exceptionally(ex -> {
+                // Handle any exception that occurs during processing
+                logger.error("Error processing account: " + accountNumber, ex);
+                taskCompletedCount.incrementAndGet();
+                return null; // Return null or a default response in case of failure
+            });
+
+        futures.add(future);
+    }
+
+    // Wait for all CompletableFutures to complete
+    try {
+        // Poll the tasks to check if enough records are fetched
+        while (taskCompletedCount.get() < futures.size()) {
+            // If the record count is reached, cancel all remaining futures
+            if (fetchedRecordsCount.get() >= requestedNumberOfRecords) {
+                for (CompletableFuture<ResponseData> fut : futures) {
+                    fut.cancel(true); // Cancel remaining tasks
+                }
+                break;
+            }
+            Thread.sleep(100); // Sleep for a short duration before checking again
+        }
+    } catch (InterruptedException e) {
+        logger.error("Error during task polling", e);
+    } catch (Exception e) {
+        logger.error("Error during asynchronous processing", e);
+        errno = "188"; // Handle the error if something goes wrong
+    }
+
+    // Check if no records were fetched
+    if (fetchedRecordsCount.get() == 0) {
+        errno = "188";
+    }
+
+    // Prepare the final response
+    List<String> res = new ArrayList<>();
+    res.add(allRecordsBuilder.toString());
+    res.add(String.valueOf(fetchedRecordsCount.get()));
+    res.add(errno);
+
+    logger.info("Balance Enquiry Child Service completed.");
+    return res;
+}
