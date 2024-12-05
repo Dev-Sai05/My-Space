@@ -1,0 +1,47 @@
+int processedRecordsCount = 0; // To track how many records have been processed
+
+for (String accountNumber : accountNumbers) {
+    if (processedRecordsCount >= numberOfRecordsToFetch) {
+        break; // Stop processing if required number of records is processed
+    }
+
+    processedRecordsCount++; // Increment for every iteration
+
+    // RUN FIX
+    JVMAVBL jvmavbl = new JVMAVBL();
+    // RUN FIX
+    // Create input and output objects for each account number
+    Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+    Ls400InpEnqType input2 = new Ls400InpEnqType();
+    Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+    Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+    Ls400OutputResponse output3 = new Ls400OutputResponse();
+
+    // Set input parameters
+    input1.setLs400InputAccountNumber(accountNumber);
+    input2.setLs400InpEnqType("1");
+
+    // RUN FIX
+    RunUnit run1 = new RunUnit();
+    run1.Add(jvmavbl);
+    run1.Call("JVMAVBL", input1.get_Reference(), input2.get_Reference(), output1.get_Reference(), output2.get_Reference(), output3.get_Reference());
+
+    // RUN FIX
+    errno = output1.getLs400OutputErrorNumber();
+    outResponse = output3.getLs400OutputResponse();
+    logger.info("run log" + errno + "kkkkkkkkkkkkkk " + outResponse + "KKKKKKKKKKKKK");
+
+    if (errno.equals("0000")) {
+        errno = "0000";
+        if (outResponse != null && !outResponse.trim().isEmpty()) {
+            allRecordsBuilder.append(outResponse.trim());
+            fetchedRecordsCount++;
+            logger.info("Record fetched successfully for account");
+        }
+    } else if (errno.equals("155") || errno.equals("0155")) {
+        errno = "0155";
+        break;
+    } else {
+        errno = "0000";
+    }
+}
