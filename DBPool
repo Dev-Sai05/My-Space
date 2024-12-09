@@ -1,0 +1,597 @@
+//*****************************************************************
+//                                                                *
+//*****************************************************************
+//                                                                *
+//  	           PROGRAM - BalanceEnquiryService.Java                 
+//                                                                *
+//*****************************************************************
+//                 P R O G R A M    H I S T O R Y                 *
+//                                                                *
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+//----------------------------------------------------------------*
+//Naga Sai Ganesh  : 27/11/2024    : 24090013  :  MICROSERVICES   *
+//Niharika Tammana : 27/11/2024    : 24090013  :  MICROSERVICES   *
+//----------------------------------------------------------------*
+package com.tcs.bancs.microservices.services;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.sql.DataSource;
+import javax.sql.rowset.serial.SerialException;
+import javax.validation.Valid;
+
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.google.gson.Gson;
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.aggregator.AggregationServiceImpl;
+import com.tcs.bancs.microservices.config.CacheConfig;
+import com.tcs.bancs.microservices.configuration.PropertyLoader;
+import com.tcs.bancs.microservices.exception.RrnException;
+import com.tcs.bancs.microservices.exception.SrcException;
+import com.tcs.bancs.microservices.impl.MigenqDetailsRepositoryImpl;
+import com.tcs.bancs.microservices.util.FrameworkConstants;
+import com.tcs.bancs.microservices.java.dbconnection.DBConnection;
+import com.tcs.bancs.microservices.java.txtm.Error_Description;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC.LsInputCustNumber;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC.LsOutputAccountNumbers;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUCC.LsRecordArea;
+import com.tcs.bancs.microservices.reqbean.RequestBean;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+
+@RestController
+@Api(value = "Aggregation_API", description = " ", tags = { "Aggregation API" })
+@RequestMapping("/")
+@Cacheable
+@CacheEvict
+public class BalanceEnquiryService {
+
+//////////////////////////////////////////////////////////////////////////--------ENV VARIABLES STARTED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+	@Autowired
+	AggregationServiceImpl aggregationServiceImpl;
+
+	@Autowired
+	MigenqDetailsRepositoryImpl migDetails;;
+
+	@Value("${UTENVCALS-BANCS-TRACE-STATE}")
+	private String bancsTraceState;
+
+	@Value("${UTENVCALS-MASTER-DQPTYPE}")
+	private String masterDQType;
+
+	@Value("${UTENVCALS-BANCS-HOST}")
+	private String bancsHost;
+
+	@Value("${UTENVCALS-FNS-SYSNUM}")
+	private String fnsSysnum;
+
+	@Value("${UTENVCALS-CTRL-SYSNUM}")
+	private String ctrlSysnum;
+
+	@Value("${UTENVCALS-DAY-SYSNUM}")
+	private String daySysnum;
+
+	@Value("${UTENVCALS-NIGHT-SYSNUM}")
+	private String nightSysnum;
+
+	@Value("${UTENVCALS-NON24H-SYSNUM}")
+	private String non24hsum;
+
+	@Value("${UTENVCALS-DEF-RMODE}")
+	private String defRMode;
+
+	@Value("${UTENVCALS-MASTER-DB-1}")
+	private String masterDB1;
+
+	@Value("${UTENVCALS-MASTER-DB-2}")
+	private String masterDB2;
+
+	@Value("${UTENVCALS-SERVICES-FLAG}")
+	private String servicesFlag;
+
+	@Value("${VC-MS-SERVICE-ID}")
+	private String serviceid;
+	
+	@Value("${avbal.response.outline.location}")
+	private String AVBAL_RES_FILE_PATH;
+	
+	@Value("${UTENVCALS-INSPARAM-FLAG}")
+	private String INSPARAM_FLAG;
+	
+	@Value("${UTENVCALS-INSPARAM-VALUE}")
+	private String INSPARAM_VALUE;
+	
+    @Value("${UTENVCALS-DEF-RMODE}")
+    private String dbmode;
+	
+    @Autowired
+    @Qualifier("dayDataSource")
+    private DataSource dayDataSource;
+
+//    @Autowired
+//    @Qualifier("nightDataSource")
+//    private DataSource nightDataSource;
+	
+//////////////////////////////////////////////////////////////////////////--------ENV VARIABLES ENDED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+	Logger logger = LoggerFactory.getLogger(BalanceEnquiryService.class);
+	
+//////////////////////////////////////////////////////////////////////////--------PATH FILES READING STARTED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+	String ErrorCodeMasterFilePath = CacheConfig.frameworkConfigProperties
+			.getProperty(FrameworkConstants.LOOKUP_FILES_PATH);
+	String sourceAuth = CacheConfig.frameworkConfigProperties.getProperty(FrameworkConstants.LOOKUP_FILES_PATH);
+	String ipConfig = CacheConfig.frameworkConfigProperties.getProperty(FrameworkConstants.LOOKUP_FILES_PATH);
+	Properties error = PropertyLoader
+			.readPropertyFile(new String(ErrorCodeMasterFilePath + "/ErrorCodeMaster.properties"));
+	Properties sId = PropertyLoader.readPropertyFile(new String(sourceAuth + "/SourceIdList.properties"));
+	Properties ipprop = PropertyLoader.readPropertyFile(new String(ipConfig + "/IpConfigMaster.properties"));
+	
+//////////////////////////////////////////////////////////////////////////--------PATH FILES READING ENDED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+	private final Response responseObj;
+
+	@Autowired
+	public BalanceEnquiryService(Response responseObj) {
+		this.responseObj = responseObj;
+	}
+	
+	@InitBinder
+	public void initBinder(WebDataBinder binder) {
+		binder.setDisallowedFields(new String[] {});
+	}
+	
+//////////////////////////////////////////////////////////////////////////-------- OBJECTS CREATION STARTED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+	ErrorResponse 			errobj 		= new ErrorResponse();
+	Error_Description 		errdesc 	= new Error_Description();
+	Validate_Teller_Branch 	validate 	= new Validate_Teller_Branch();
+	BalanceEnqService_Child balance = new BalanceEnqService_Child();
+	InputValidations 		inpval 		= new InputValidations();
+	Gson gson = new Gson();
+//////////////////////////////////////////////////////////////////////////-------- OBJECTS CREATION ENDED--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+	
+
+	@SuppressWarnings({ "unchecked", "rawtypes"})
+	@ApiOperation(value = "Call AVBAL", notes = "AVBAL Service:This API is used to fetch Customer Details.")
+	@PostMapping(value = { "/Balance_Enq" }, produces = { "application/json" })
+	@CrossOrigin()
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	@Validated
+	public ResponseEntity<Object> getCustomerDetails(@RequestBody(required = false) @Valid RequestBean reqbean,
+			HttpServletRequest request, @RequestHeader HttpHeaders headers, HttpServletResponse response)
+			throws SerialException, SQLException, IOException, RrnException, SrcException, InterruptedException, ExecutionException {
+
+		response.setHeader("X-Content-Type-Options", "nosniff");
+		response.setHeader("X-Frame-Options", "DENY");
+		response.setHeader("Content-Security-Policy", "default-src 'self'");
+		response.setHeader("X-XSS-Protection", "1;mode=block");
+		
+//////////////////////////////////////////////////////////////////////////-------- INITIAL VARIABLES--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+		
+		String IPAddress = request.getHeader("X-Forwarded-For");
+		String remoteAddress = request.getRemoteAddr();
+		String accept = request.getHeader("Content-Type");
+		DateTimeFormatter entryDate1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS");
+		LocalDateTime time = LocalDateTime.now();
+		String entryDate = entryDate1.format(time);
+		
+//////////////////////////////////////////////////////////////////////////-------- SERVICE VARIABLES--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+		String reqbeanstr = new String();
+		String finalResponse = new String();
+		String res_file_path = new String();
+		String refno = new String();
+		String tellerno = new String();
+		String branchno = new String();
+		String noOfRecords = new String();
+		String cifno = new String();
+		String lacctno = new String();
+		String serviceno = serviceid;
+		String sourceId  = new String();
+		String validChkdFlag = new String();
+		String validacctChkdFlag = new String();
+		List<String> chkdRes = new ArrayList<>();
+		List<String> acctchkdRes = new ArrayList<>();
+		String out_response = new String();
+		String errno = new String();
+		String chkderr = new String();
+		String acctchkderr = new String();
+		String errDesc = new String();
+		List<String> errList = new ArrayList<>();
+		String accno = new String();
+		String allowTellerBranchFlag = new String();
+		//rununit fix
+		DataSource dataSource = getDataSource("day");
+		//rununit fix
+//////////////////////////////////////////////////////////////////////////-------- ENV VARIABLES--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+		
+		String callcode = "S";
+		String opt = "";
+		List<String> res = new ArrayList<String>();
+		String formattedmasterDB1 = StringUtils.rightPad(masterDB1, 15);
+		String formattedmasterDB2 = StringUtils.rightPad(masterDB2, 15);
+		String lsRecArea = bancsTraceState.trim() + masterDQType.trim() + bancsHost.trim() + fnsSysnum.trim()
+				+ ctrlSysnum.trim() + daySysnum.trim() + nightSysnum.trim() + non24hsum.trim() + defRMode.trim()
+				+ formattedmasterDB1 + formattedmasterDB2 + servicesFlag.trim() + INSPARAM_FLAG.trim() + INSPARAM_VALUE.trim();
+		String[] arr = { bancsTraceState, masterDQType, bancsHost, fnsSysnum, ctrlSysnum, daySysnum, nightSysnum,
+				non24hsum, defRMode, masterDB1, masterDB2, servicesFlag, serviceid,AVBAL_RES_FILE_PATH,ErrorCodeMasterFilePath, sourceAuth, ipConfig, INSPARAM_FLAG, INSPARAM_VALUE};
+		
+//////////////////////////////////////////////////////////////////////////-------- INPUT VALIDATIONS--------\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+	    if(reqbean != null) {
+	    	if(!reqbean.isEmpty()){
+	    		reqbeanstr = gson.toJson(reqbean).toString();
+	    		tellerno = request.getHeader("TELLER_NUMBER");
+	    		branchno = request.getHeader("BRANCH_NUMBER");
+	    	refno	    =  reqbean.getReferenceNumber();
+			errno 		= inpval.isNullorEmpty(arr);
+		    if(!errno.equals("00000")) {
+		    	if(refno == null) {
+		    		refno = "";
+		    	}
+		    	errDesc = error.getProperty(errno);
+		    	if(errDesc == null || errDesc.trim().equals("")) {
+		    		logger.error("Error Description filepath not set!");
+		    		finalResponse = errobj.getErrorResponse("VC015", "ERROR IN READING FILE PATH", refno);
+		    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    	else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    }
+		    logger.info("VC------------------------Successfully read application.properties------------------------VC"); 
+		    
+		    res_file_path=AVBAL_RES_FILE_PATH;
+
+		    errList = inpval.validateRefNum(refno);
+		    errno = errList.get(1);
+		    refno = errList.get(0);
+		    if(!errno.equals("00000")) {			
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+					logger.error("Error Description Not Found!");
+					finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+				}
+				else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+				}
+			}
+
+			errList = inpval.validateTellerNum(tellerno);
+		    errno = errList.get(1);
+		    tellerno = errList.get(0);
+			if (!errno.equals("00000")) {
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+		    		logger.error("Error Description Not Found!");
+		    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+		    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    	else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+			}
+
+			
+			errList = inpval.validateBranchNum(branchno);
+		    errno = errList.get(1);
+		    branchno = errList.get(0);
+			if (!errno.equals("00000")) {
+
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+		    		logger.error("Error Description Not Found!");
+		    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+		    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    	else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+			}
+
+			cifno = reqbean.getCIFNumber();
+			chkdRes = inpval.validateCIFNumber(cifno);
+			errno = chkdRes.get(1);
+			if (!errno.equals("00000")) {
+				if (errno.equals("VC011")) {
+					errDesc = error.getProperty(errno);
+					if(errDesc == null || errDesc.trim().equals("")) {
+			    		logger.error("Error Description Not Found!");
+			    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+			    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+			    	}
+			    	else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+			    	}
+				} else {
+					chkderr = errno;
+					validChkdFlag = "N";
+				}
+			} else {
+				cifno = chkdRes.get(0);
+				validChkdFlag = "Y";
+			}
+			
+			lacctno = reqbean.getACCOUNTNumber();
+			acctchkdRes = inpval.validateAccountNum(lacctno);
+			errno = acctchkdRes.get(1);
+			if (!errno.equals("00000")) {
+				if (errno.equals("VC018")) {
+					errDesc = error.getProperty(errno);
+					if(errDesc == null || errDesc.trim().equals("")) {
+			    		logger.error("Error Description Not Found!");
+			    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+			    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+			    	}
+			    	else {
+						finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+						migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+			    	}
+				} else {
+					acctchkderr = errno;
+					validacctChkdFlag = "N";
+				}
+			} else {
+				lacctno = acctchkdRes.get(0);
+				validacctChkdFlag = "Y";
+			}
+
+			String requestedNoOfRecords = reqbean.getRecordCount();
+		    errList = inpval.validateRecordCount(requestedNoOfRecords);	    
+		    requestedNoOfRecords = errList.get(0);
+		    errno = errList.get(1);
+			if (!errno.equals("00000")) {
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+		    		logger.error("Error Description Not Found!");
+		    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+		    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    	else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+				}
+			}
+			
+			migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "", Base64.getEncoder().encodeToString(("").getBytes()), "" );
+			
+			logger.info("VC------------------------Initiating DB Pooling------------------------VC");
+
+			if (accept != null && accept.contains("application/json")) {
+				if (validChkdFlag.equals("Y")) {
+					if(validacctChkdFlag.equals("Y")) {
+							//pooling
+					try (Connection connection = dataSource.getConnection()) {
+							logger.info(
+									"VC------------------------Intiating Teller&Branch Validation------------------------VC");
+							List<String> TellerBranchRes = validate.validateTellerBranchService(tellerno, branchno, serviceno, lsRecArea, connection);						
+							allowTellerBranchFlag = TellerBranchRes.get(0);
+							errno = TellerBranchRes.get(1);						
+					} catch (SQLException se) {
+							return ResponseEntity.status(HttpStatus.OK).body("Teller validation : Issue in db pooling");
+					}
+							//pooling
+					if (allowTellerBranchFlag.equals("Y")) {
+						    logger.info(
+						            "VC------------------------Teller&Branch Validated Sucessfully------------------------VC");
+						    String formatCifno = (cifno == null || cifno.isEmpty()) 
+						                        ? "00000000000000000" 
+						                        : String.format("%017d", new BigInteger(cifno));        
+						    logger.info(
+									"VC------------------------Intiating JVMCUCC------------------------VC");
+					try(Connection connection = dataSource.getConnection()) {
+							JVMCUCC jvmcucc = new JVMCUCC();
+						    LsInputCustNumber input = new LsInputCustNumber();
+						    LsOutputAccountNumbers output = new LsOutputAccountNumbers();
+						    LsErrorNumber error = new LsErrorNumber();
+							LsRecordArea   inputrec = new LsRecordArea();
+						    input.setLsInputCustNumber(formatCifno);
+							inputrec.setLsRecordArea(lsRecArea);						
+					        RunUnit run1 = new RunUnit();
+				            run1.Add(jvmcucc);
+				            run1.Call("JVMCUCC", input.get_Reference(), error.get_Reference(), output.get_Reference(), connection, inputrec.get_Reference());
+						    // Extract error number and validate
+						    errno = error.getLsErrorNumber();
+						    accno = output.getLsOutputAccountNumbers();
+						    run1.close();						    
+						    logger.info("VC------------------------Fetched ERROR_NUMBER JVMCUCC------------------------VC" + errno);
+					   		} catch(SQLException e) {
+								   return ResponseEntity.status(HttpStatus.OK).body("JVMCC : Issue in db pooling");
+							}
+						    if ("0000".equals(errno)) {						       
+						        // Perform balance enquiry;
+						    	res = balance.Balance_Enquiry_Child(accno, Integer.parseInt(requestedNoOfRecords), lacctno, dataSource, lsRecArea);
+						        out_response = res.get(0);
+						        noOfRecords = res.get(1);
+						        errno = res.get(2);
+						        logger.info("VC------------------------Fetched NO_OF_RECORDS BALANCE----------------VC" + noOfRecords);
+						        logger.info("VC------------------------Fetched ERROR_NUMBER BALANCE----------------VC" + errno);								
+						    } else {
+						        // If error number is not 0000, return it
+						        logger.error("VC------------------------Error encountered JVMCUCC------------------------VC" + errno);
+						         try(Connection connection = dataSource.getConnection()) {
+								 logger.info("connection fix" + connection);
+						        errDesc = errdesc.getCbsErrDesc(errno, callcode, opt, lsRecArea, connection);
+						         } catch(SQLException e) {
+						        	 return ResponseEntity.status(HttpStatus.OK).body("BALENQ : Issue in db pooling");
+						         }
+								finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+								migDetails.updateResponse("1", errno, errDesc,
+										Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure", entryDate, refno);
+							
+						    } 
+						}
+						else {
+							try(Connection connection = dataSource.getConnection()) {							 
+							errDesc = errdesc.getCbsErrDesc(acctchkderr, callcode, opt, lsRecArea, connection);
+							} catch(SQLException e) {
+					        	 return ResponseEntity.status(HttpStatus.OK).body("ERRDESC : Issue in db pooling");
+					         }
+							finalResponse = errobj.getErrorResponse(acctchkderr, errDesc, refno);
+							migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, acctchkderr, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+							return new ResponseEntity(finalResponse, HttpStatus.OK);
+						}
+						
+					}
+						else {
+							try(Connection connection = dataSource.getConnection()) {							 
+							errDesc = errdesc.getCbsErrDesc(acctchkderr, callcode, opt, lsRecArea, connection);
+							} catch(SQLException e) {
+					        	 return ResponseEntity.status(HttpStatus.OK).body("ERRDESC : Issue in db pooling");
+					         }
+							finalResponse = errobj.getErrorResponse(acctchkderr, errDesc, refno);
+							migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, acctchkderr, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+							return new ResponseEntity(finalResponse, HttpStatus.OK);
+						}
+					
+					}
+					else {
+						try(Connection connection = dataSource.getConnection()) {	
+						errDesc = errdesc.getCbsErrDesc(chkderr, callcode, opt, lsRecArea, connection);
+						} catch(SQLException e) {
+				        	 return ResponseEntity.status(HttpStatus.OK).body("ERRDESC : Issue in db pooling");
+				         }
+						finalResponse = errobj.getErrorResponse(chkderr, errDesc, refno);
+						migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, chkderr, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+					}				
+			
+				
+			}
+			else {
+				errno = "VC009";
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+		    		logger.error("Error Description Not Found!");
+		    		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+		    		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+		    	else {
+				finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+				migDetails.saveInitialRequest(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+		    	}
+			
+			}
+		}
+			else {
+				errno = "VC001";
+				errDesc = error.getProperty(errno);
+				if(errDesc == null || errDesc.trim().equals("")) {
+					logger.error("Error Description Not Found!");
+					finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+				}
+				else {
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+				}
+			}  
+	    }
+
+	    else {
+	    	errno = "VC001";
+			errDesc = error.getProperty(errno);
+			if(errDesc == null || errDesc.trim().equals("")) {
+		   		logger.error("Error Description Not Found!");
+		   		finalResponse = errobj.getErrorResponse("VC014", "JAVA ERROR DESCRIPTION NOT FOUND", refno);
+		   		migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+		   	}
+		   	else {
+				finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+				migDetails.saveInitialRequest(Base64.getEncoder().encodeToString(("".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+			}
+	    }
+	    
+	    if (errno.equals("0000")) {
+			errno = "0000";
+			finalResponse = responseObj.getResponse(res_file_path, out_response, refno, noOfRecords);
+			migDetails.updateResponse("0", errno, "OK SUCCESS",
+					Base64.getEncoder().encodeToString((finalResponse).getBytes()), "success", entryDate, refno);
+		} else {
+			try(Connection connection = dataSource.getConnection()) {
+			 logger.info("connection fix" + connection);
+			errDesc = errdesc.getCbsErrDesc(errno, callcode, opt, lsRecArea, connection);
+			} catch(SQLException e) {
+				return ResponseEntity.status(HttpStatus.OK).body("ERRDESC : Issue in db pooling");
+			}
+			finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+			migDetails.updateResponse("1", errno, errDesc,
+					Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure", entryDate, refno);
+		}
+		return new ResponseEntity(finalResponse, HttpStatus.OK);
+
+	}
+    private DataSource getDataSource(String dbType) {
+        switch (dbType) {
+            case "day":
+                return dayDataSource;
+            default:
+                throw new IllegalArgumentException("Unsupported database type: " + dbType);
+        }
+    }
+}
+
+
