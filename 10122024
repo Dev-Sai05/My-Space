@@ -323,3 +323,147 @@ private static class BracesIfElseChecker extends VoidVisitorAdapter<StringBuilde
         }
     }
 }
+
+
+
+
+🥲🥲🥲🥲🥲🥲🥲
+
+
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.awt.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class JavaCodeAnalyzer {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(JavaCodeAnalyzer::createAndShowGUI);
+    }
+
+    private static void createAndShowGUI() {
+        JFrame frame = new JFrame("Java Code Analyzer");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(600, 400);
+        frame.setLayout(new BorderLayout());
+
+        JTextArea resultArea = new JTextArea();
+        resultArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(resultArea);
+
+        JButton openFileButton = new JButton("Open Java File");
+        openFileButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new FileNameExtensionFilter("Java Files", "java"));
+            int returnValue = fileChooser.showOpenDialog(frame);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                try {
+                    String analysisResult = analyzeJavaFile(selectedFile);
+                    resultArea.setText(analysisResult);
+                } catch (FileNotFoundException ex) {
+                    resultArea.setText("Error: File not found!");
+                }
+            }
+        });
+
+        frame.add(openFileButton, BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
+
+        frame.setVisible(true);
+    }
+
+    private static String analyzeJavaFile(File file) throws FileNotFoundException {
+        StringBuilder analysisResult = new StringBuilder();
+        try {
+            String code = new String(Files.readAllBytes(Paths.get(file.getPath())));
+
+            // Check for missing flower braces, semicolons
+            analysisResult.append("Syntax Issue Analysis:\n");
+            checkForMissingBracesAndSemicolons(code, analysisResult);
+
+            // Use JavaParser for method analysis
+            JavaParser parser = new JavaParser();
+            CompilationUnit compilationUnit = parser.parse(file).getResult().orElseThrow(() -> new FileNotFoundException("Unable to parse file"));
+
+            // Check for try-catch blocks
+            analysisResult.append("\nTry-Catch Block Analysis:\n");
+            new TryCatchBlockChecker().visit(compilationUnit, analysisResult);
+
+            // Check for null assignments
+            analysisResult.append("\nNull Assignment Analysis:\n");
+            new NullAssignmentChecker().visit(compilationUnit, analysisResult);
+        } catch (IOException e) {
+            analysisResult.append("Error reading file: ").append(e.getMessage());
+        }
+
+        return analysisResult.toString();
+    }
+
+    private static void checkForMissingBracesAndSemicolons(String code, StringBuilder result) {
+        // Check for missing flower braces
+        Pattern ifElsePattern = Pattern.compile("if\\s*\.*\\\s*[^\\{]*[^;]*");
+        Matcher matcher = ifElsePattern.matcher(code);
+        while (matcher.find()) {
+            result.append("Missing braces in if/else block at line ").append(getLineNumber(code, matcher.start())).append("\n");
+        }
+
+        // Check for missing semicolons at the end of statements
+        Pattern semicolonPattern = Pattern.compile(".*[^;]\\s*\\n");
+        Matcher semicolonMatcher = semicolonPattern.matcher(code);
+        while (semicolonMatcher.find()) {
+            result.append("Missing semicolon at line ").append(getLineNumber(code, semicolonMatcher.start())).append("\n");
+        }
+    }
+
+    private static int getLineNumber(String code, int index) {
+        String[] lines = code.split("\n");
+        int lineNumber = 1;
+        int lineStartIndex = 0;
+
+        for (String line : lines) {
+            lineStartIndex += line.length() + 1;
+            if (lineStartIndex > index) {
+                break;
+            }
+            lineNumber++;
+        }
+
+        return lineNumber;
+    }
+
+    private static class TryCatchBlockChecker extends VoidVisitorAdapter<StringBuilder> {
+        @Override
+        public void visit(MethodDeclaration md, StringBuilder result) {
+            super.visit(md, result);
+            BlockStmt body = md.getBody().orElse(null);
+            if (body != null && body.getStatements().stream().noneMatch(s -> s.isTryStmt())) {
+                result.append("  Method ").append(md.getName()).append(" does not contain a try-catch block.\n");
+            }
+        }
+    }
+
+    private static class NullAssignmentChecker extends VoidVisitorAdapter<StringBuilder> {
+        @Override
+        public void visit(MethodDeclaration md, StringBuilder result) {
+            super.visit(md, result);
+            md.getParameters().forEach(param -> {
+                if (param.getType().isReferenceType() && !param.getAnnotations().isNonEmpty()) {
+                    result.append("  Parameter ").append(param.getName()).append(" in method ")
+                          .append(md.getName()).append(" might not be checked for null.\n");
+                }
+            });
+        }
+    }
+}
