@@ -1,3 +1,111 @@
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Stack;
+
+public class JavaCodeValidator {
+
+    public static void main(String[] args) {
+        File file = new File("Test.java"); // Replace with the actual file path
+
+        try {
+            String content = Files.readString(file.toPath());
+            StringBuilder analysisResult = new StringBuilder();
+
+            boolean isValid = validateJavaCode(content, analysisResult);
+
+            if (isValid) {
+                System.out.println("No issues detected in the file.");
+            } else {
+                System.out.println("Code Issues Detected:\n" + analysisResult);
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+        }
+    }
+
+    private static boolean validateJavaCode(String content, StringBuilder analysisResult) {
+        String[] lines = content.split("\n");
+        Stack<Character> braceStack = new Stack<>();
+
+        boolean isValid = true;
+        int openIfCount = 0, closeIfCount = 0; // For if-else tracking
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+
+            // Check for unmatched braces
+            for (char c : line.toCharArray()) {
+                if (c == '{') {
+                    braceStack.push(c);
+                } else if (c == '}') {
+                    if (braceStack.isEmpty()) {
+                        analysisResult.append("Line ").append(i + 1).append(": Unmatched closing brace '}'.\n");
+                        isValid = false;
+                    } else {
+                        braceStack.pop();
+                    }
+                }
+            }
+
+            // Check for missing semicolon
+            if (isJavaStatement(line) && !line.endsWith(";")) {
+                analysisResult.append("Line ").append(i + 1).append(": Missing semicolon.\n");
+                isValid = false;
+            }
+
+            // Track if-else structure
+            if (line.startsWith("if") && line.endsWith("{")) {
+                openIfCount++;
+            }
+            if (line.startsWith("else") && line.endsWith("{")) {
+                closeIfCount++;
+            }
+
+            // Check for try-catch block
+            if (line.contains("try") && !line.contains("{")) {
+                analysisResult.append("Line ").append(i + 1).append(": 'try' block should start with '{'.\n");
+                isValid = false;
+            }
+            if (line.contains("catch") && !line.contains("{")) {
+                analysisResult.append("Line ").append(i + 1).append(": 'catch' block should start with '{'.\n");
+                isValid = false;
+            }
+        }
+
+        // Final brace check
+        if (!braceStack.isEmpty()) {
+            analysisResult.append("Error: Unmatched opening braces '{' detected.\n");
+            isValid = false;
+        }
+
+        // Final if-else check
+        if (openIfCount != closeIfCount) {
+            analysisResult.append("Error: Unmatched if-else blocks detected.\n");
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private static boolean isJavaStatement(String line) {
+        return line.matches(".*\\b(return|break|continue|throw|new|System\\.out\\.print).*") ||
+               line.matches(".*=.*") || line.matches(".*\\+\\+.*") || line.matches(".*--.*");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 private static boolean validateJavaCode(String content, StringBuilder analysisResult) {
     String[] lines = content.split("\n");
     Stack<Character> braceStack = new Stack<>();
