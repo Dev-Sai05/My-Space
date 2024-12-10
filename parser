@@ -232,3 +232,29 @@ public class JavaCodeAnalyzer {
         }
     }
 }
+
+
+
+
+++++++
+
+private static class ResourceClosureChecker extends VoidVisitorAdapter<StringBuilder> {
+    @Override
+    public void visit(MethodDeclaration md, StringBuilder result) {
+        super.visit(md, result);
+        md.getBody().ifPresent(body -> {
+            boolean hasOpen = body.getStatements().stream()
+                    .anyMatch(s -> s.toString().contains("open"));
+
+            boolean hasClose = body.getStatements().stream()
+                    .anyMatch(s -> s.toString().contains("close"));
+
+            int line = md.getRange().map(range -> range.begin.line).orElse(-1);
+
+            if (hasOpen && !hasClose) {
+                result.append("  Method '").append(md.getName()).append("' (line ").append(line)
+                        .append(") might not close opened resources.\n");
+            }
+        });
+    }
+}
