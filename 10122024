@@ -334,6 +334,7 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 import javax.swing.*;
@@ -344,8 +345,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
 
 public class JavaCodeAnalyzer {
     public static void main(String[] args) {
@@ -389,7 +389,7 @@ public class JavaCodeAnalyzer {
         try {
             String code = new String(Files.readAllBytes(Paths.get(file.getPath())));
 
-            // Check for missing flower braces, semicolons
+            // Check for missing braces and semicolons
             analysisResult.append("Syntax Issue Analysis:\n");
             checkForMissingBracesAndSemicolons(code, analysisResult);
 
@@ -404,6 +404,7 @@ public class JavaCodeAnalyzer {
             // Check for null assignments
             analysisResult.append("\nNull Assignment Analysis:\n");
             new NullAssignmentChecker().visit(compilationUnit, analysisResult);
+
         } catch (IOException e) {
             analysisResult.append("Error reading file: ").append(e.getMessage());
         }
@@ -412,35 +413,34 @@ public class JavaCodeAnalyzer {
     }
 
     private static void checkForMissingBracesAndSemicolons(String code, StringBuilder result) {
-        // Check for missing flower braces
-        Pattern ifElsePattern = Pattern.compile("if\\s*\.*\\\s*[^\\{]*[^;]*");
-        Matcher matcher = ifElsePattern.matcher(code);
-        while (matcher.find()) {
-            result.append("Missing braces in if/else block at line ").append(getLineNumber(code, matcher.start())).append("\n");
-        }
-
-        // Check for missing semicolons at the end of statements
-        Pattern semicolonPattern = Pattern.compile(".*[^;]\\s*\\n");
-        Matcher semicolonMatcher = semicolonPattern.matcher(code);
-        while (semicolonMatcher.find()) {
-            result.append("Missing semicolon at line ").append(getLineNumber(code, semicolonMatcher.start())).append("\n");
-        }
-    }
-
-    private static int getLineNumber(String code, int index) {
+        // Check for unmatched braces
+        int openBraces = 0;
+        int closeBraces = 0;
         String[] lines = code.split("\n");
-        int lineNumber = 1;
-        int lineStartIndex = 0;
 
-        for (String line : lines) {
-            lineStartIndex += line.length() + 1;
-            if (lineStartIndex > index) {
-                break;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+
+            // Count opening braces
+            if (line.contains("{")) {
+                openBraces++;
             }
-            lineNumber++;
+
+            // Count closing braces
+            if (line.contains("}")) {
+                closeBraces++;
+            }
+
+            // Check if semicolon is missing at the end of the statement
+            if (line.matches(".*[^;]\\s*$") && !line.isEmpty() && !line.startsWith("//")) {
+                result.append("Missing semicolon at line ").append(i + 1).append("\n");
+            }
         }
 
-        return lineNumber;
+        if (openBraces != closeBraces) {
+            result.append("Mismatched braces detected. Open braces: ").append(openBraces)
+                    .append(", Close braces: ").append(closeBraces).append("\n");
+        }
     }
 
     private static class TryCatchBlockChecker extends VoidVisitorAdapter<StringBuilder> {
