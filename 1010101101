@@ -124,3 +124,153 @@ public class JavaCodeAnalyzer {
         }
     }
 }
+
+
+
+///////
+
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.IfStmt;
+import com.github.javaparser.ast.stmt.TryStmt;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.awt.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+
+public class JavaCodeAnalyzer {
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(JavaCodeAnalyzer::createAndShowGUI);
+    }
+
+    private static void createAndShowGUI() {
+        JFrame frame = new JFrame("Java Code Analyzer");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(600, 400);
+        frame.setLayout(new BorderLayout());
+
+        JTextArea resultArea = new JTextArea();
+        resultArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(resultArea);
+
+        JButton openFileButton = new JButton("Open Java File");
+        openFileButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new FileNameExtensionFilter("Java Files", "java"));
+            int returnValue = fileChooser.showOpenDialog(frame);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                try {
+                    String analysisResult = analyzeJavaFile(selectedFile);
+                    resultArea.setText(analysisResult);
+                } catch (FileNotFoundException ex) {
+                    resultArea.setText("Error: File not found!");
+                } catch (IOException ex) {
+                    resultArea.setText("Error reading file: " + ex.getMessage());
+                }
+            }
+        });
+
+        frame.add(openFileButton, BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
+        frame.setVisible(true);
+    }
+
+    private static String analyzeJavaFile(File file) throws FileNotFoundException, IOException {
+        StringBuilder analysisResult = new StringBuilder();
+        JavaParser parser = new JavaParser();
+
+        String content = new String(Files.readAllBytes(file.toPath()));
+        CompilationUnit compilationUnit = parseJavaCode(content);
+
+        if (compilationUnit == null) {
+            analysisResult.append("Failed to parse the Java code.");
+        } else {
+            // Check for try-catch blocks
+            analysisResult.append("Try-Catch Block Analysis:\n");
+            new TryCatchBlockChecker().visit(compilationUnit, analysisResult);
+
+            // Check for missing semicolons and braces
+            analysisResult.append("\nSyntax Analysis:\n");
+            new SyntaxChecker().visit(compilationUnit, analysisResult);
+
+            // Check for unmatched if/else statements
+            analysisResult.append("\nIf/Else Analysis:\n");
+            new IfElseChecker().visit(compilationUnit, analysisResult);
+        }
+
+        return analysisResult.toString();
+    }
+
+    private static CompilationUnit parseJavaCode(String code) {
+        try {
+            return new JavaParser().parse(code).getResult().orElse(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static class TryCatchBlockChecker extends VoidVisitorAdapter<StringBuilder> {
+        @Override
+        public void visit(MethodDeclaration md, StringBuilder result) {
+            super.visit(md, result);
+            boolean hasTryCatch = md.getBody().map(body -> body.getStatements().stream().anyMatch(s -> s instanceof TryStmt)).orElse(false);
+            if (!hasTryCatch) {
+                result.append("  Method ").append(md.getName()).append(" does not contain a try-catch block.\n");
+            }
+        }
+    }
+
+    private static class SyntaxChecker extends VoidVisitorAdapter<StringBuilder> {
+        @Override
+        public void visit(MethodDeclaration md, StringBuilder result) {
+            super.visit(md, result);
+            BlockStmt body = md.getBody().orElse(null);
+            if (body != null) {
+                body.getStatements().forEach(statement -> {
+                    // Check for missing semicolons (i.e., missing statement terminators)
+                    if (statement.toString().contains("System.out.println") && !statement.toString().endsWith(";")) {
+                        result.append("  Missing semicolon at line ").append(statement.getBegin().map(pos -> pos.line).orElse(-1)).append("\n");
+                    }
+                });
+            }
+        }
+
+        // New addition: Flower Brackets Checker
+        @Override
+        public void visit(IfStmt ifStmt, StringBuilder result) {
+            super.visit(ifStmt, result);
+            // Track curly braces inside the method body for imbalance
+            if (ifStmt.getBegin().isPresent()) {
+                int openCount = 0, closeCount = 0;
+                String body = ifStmt.toString();
+                for (char c : body.toCharArray()) {
+                    if (c == '{') openCount++;
+                    if (c == '}') closeCount++;
+                }
+                if (openCount != closeCount) {
+                    result.append("  Imbalanced curly braces in If statement at line ")
+                          .append(ifStmt.getBegin().map(pos -> pos.line).orElse(-1)).append("\n");
+                }
+            }
+        }
+    }
+
+    private static class IfElseChecker extends VoidVisitorAdapter<StringBuilder> {
+        @Override
+        public void visit(IfStmt ifStmt, StringBuilder result) {
+            super.visit(ifStmt, result);
+            if (!ifStmt.getElseStmt().isPresent()) {
+                result.append("  If statement at line ").append(ifStmt.getBegin().map(pos -> pos.line).orElse(-1)).append(" is missing an else block.\n");
+            }
+        }
+    }
+}
