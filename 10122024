@@ -1,374 +1,17 @@
-public class TestClass {
-
-    public void missingSemicolon() {
-        System.out.println("This is a test")
-    }
-
-    public void mismatchedBraces() {
-        if (true) {
-            System.out.println("Mismatched braces");
-        // Missing closing brace here
-    }
-
-    public static void main(String[] args) {
-        TestClass test = new TestClass();
-        test.missingSemicolon();
-        test.mismatchedBraces();
-    }
-}
-
-
-
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.stmt.BlockStmt;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.File;
-import java.io.FileNotFoundException;
-
-public class JavaCodeAnalyzer {
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(JavaCodeAnalyzer::createAndShowGUI);
-    }
-
-    private static void createAndShowGUI() {
-        JFrame frame = new JFrame("Java Code Analyzer");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 400);
-        frame.setLayout(new BorderLayout());
-
-        JTextArea resultArea = new JTextArea();
-        resultArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(resultArea);
-
-        JButton openFileButton = new JButton("Open Java File");
-        openFileButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new FileNameExtensionFilter("Java Files", "java"));
-            int returnValue = fileChooser.showOpenDialog(frame);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                File selectedFile = fileChooser.getSelectedFile();
-                try {
-                    String analysisResult = analyzeJavaFile(selectedFile);
-                    resultArea.setText(analysisResult);
-                } catch (FileNotFoundException ex) {
-                    resultArea.setText("Error: File not found!");
-                }
-            }
-        });
-
-        frame.add(openFileButton, BorderLayout.NORTH);
-        frame.add(scrollPane, BorderLayout.CENTER);
-
-        frame.setVisible(true);
-    }
-
-    private static String analyzeJavaFile(File file) throws FileNotFoundException {
-        StringBuilder analysisResult = new StringBuilder();
-        JavaParser parser = new JavaParser();
-
-        CompilationUnit compilationUnit = parser.parse(file).getResult().orElseThrow(() -> new FileNotFoundException("Unable to parse file"));
-
-        // Check for try-catch blocks
-        analysisResult.append("Try-Catch Block Analysis:\n");
-        new TryCatchBlockChecker().visit(compilationUnit, analysisResult);
-
-        // Check for null assignments
-        analysisResult.append("\nNull Assignment Analysis:\n");
-        new NullAssignmentChecker().visit(compilationUnit, analysisResult);
-
-        // Check for resource closures
-        analysisResult.append("\nResource Closure Analysis:\n");
-        new ResourceClosureChecker().visit(compilationUnit, analysisResult);
-
-        // Check for braces and if-else statements
-        analysisResult.append("\nBraces and If-Else Check:\n");
-        new BracesIfElseChecker().visit(compilationUnit, analysisResult);
-
-        // Check if no issues found
-        if (analysisResult.length() == 0 || analysisResult.toString().contains("Analysis:")) {
-            analysisResult.append("\nNo issues found! Code is clean.");
-        }
-
-        return analysisResult.toString();
-    }
-
-    private static class TryCatchBlockChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            BlockStmt body = md.getBody().orElse(null);
-            if (body != null && body.getStatements().stream().noneMatch(s -> s.isTryStmt())) {
-                result.append("  Method ").append(md.getName()).append(" does not contain a try-catch block.\n");
-            }
-        }
-    }
-
-    private static class NullAssignmentChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            md.getParameters().forEach(param -> {
-                if (param.getType().isReferenceType() && !param.getAnnotations().isNonEmpty()) {
-                    result.append("  Parameter ").append(param.getName()).append(" in method ")
-                          .append(md.getName()).append(" might not be checked for null.\n");
-                }
-            });
-        }
-    }
-
-    private static class ResourceClosureChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            md.getBody().ifPresent(body -> {
-                if (body.getStatements().stream().anyMatch(s -> s.toString().contains("open"))) {
-                    if (body.getStatements().stream().noneMatch(s -> s.toString().contains("close"))) {
-                        result.append("  Method ").append(md.getName()).append(" might not close opened resources.\n");
-                    }
-                }
-            });
-        }
-    }
-
-    private static class BracesIfElseChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            BlockStmt body = md.getBody().orElse(null);
-            if (body != null) {
-                body.getStatements().forEach(stmt -> {
-                    // Check for missing braces in if-else blocks
-                    if (stmt.toString().contains("if") || stmt.toString().contains("else")) {
-                        if (!stmt.toString().contains("{") || !stmt.toString().contains("}")) {
-                            result.append("  Method ").append(md.getName()).append(" has an if/else block without braces.\n");
-                        }
-                    }
-                });
-            }
-        }
-    }
-}
-
-
-
------------
-
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.stmt.BlockStmt;
-import com.github.javaparser.ast.stmt.Statement;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.*;
-import java.io.File;
-import java.io.FileNotFoundException;
-
-public class JavaCodeAnalyzer {
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(JavaCodeAnalyzer::createAndShowGUI);
-    }
-
-    private static void createAndShowGUI() {
-        JFrame frame = new JFrame("Java Code Analyzer");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 400);
-        frame.setLayout(new BorderLayout());
-
-        JTextArea resultArea = new JTextArea();
-        resultArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(resultArea);
-
-        JButton openFileButton = new JButton("Open Java File");
-        openFileButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new FileNameExtensionFilter("Java Files", "java"));
-            int returnValue = fileChooser.showOpenDialog(frame);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                File selectedFile = fileChooser.getSelectedFile();
-                try {
-                    String analysisResult = analyzeJavaFile(selectedFile);
-                    resultArea.setText(analysisResult);
-                } catch (FileNotFoundException ex) {
-                    resultArea.setText("Error: File not found!");
-                }
-            }
-        });
-
-        frame.add(openFileButton, BorderLayout.NORTH);
-        frame.add(scrollPane, BorderLayout.CENTER);
-
-        frame.setVisible(true);
-    }
-
-    private static String analyzeJavaFile(File file) throws FileNotFoundException {
-        StringBuilder analysisResult = new StringBuilder();
-        JavaParser parser = new JavaParser();
-
-        CompilationUnit compilationUnit = parser.parse(file).getResult().orElseThrow(() -> new FileNotFoundException("Unable to parse file"));
-
-        // Check for try-catch blocks
-        analysisResult.append("Try-Catch Block Analysis:\n");
-        new TryCatchBlockChecker().visit(compilationUnit, analysisResult);
-
-        // Check for null assignments
-        analysisResult.append("\nNull Assignment Analysis:\n");
-        new NullAssignmentChecker().visit(compilationUnit, analysisResult);
-
-        // Check for resource closures
-        analysisResult.append("\nResource Closure Analysis:\n");
-        new ResourceClosureChecker().visit(compilationUnit, analysisResult);
-
-        // Check for braces and if-else statements
-        analysisResult.append("\nBraces and If-Else Check:\n");
-        new BracesIfElseChecker().visit(compilationUnit, analysisResult);
-
-        // Check if no issues found
-        if (analysisResult.length() == 0 || analysisResult.toString().contains("Analysis:")) {
-            analysisResult.append("\nNo issues found! Code is clean.");
-        }
-
-        return analysisResult.toString();
-    }
-
-    private static class TryCatchBlockChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            BlockStmt body = md.getBody().orElse(null);
-            if (body != null && body.getStatements().stream().noneMatch(s -> s.isTryStmt())) {
-                result.append("  Method ").append(md.getName())
-                        .append(" at line ").append(md.getBegin().get().line)
-                        .append(" does not contain a try-catch block.\n");
-            }
-        }
-    }
-
-    private static class NullAssignmentChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            md.getParameters().forEach(param -> {
-                if (param.getType().isReferenceType() && !param.getAnnotations().isNonEmpty()) {
-                    result.append("  Parameter ").append(param.getName())
-                            .append(" in method ").append(md.getName())
-                            .append(" at line ").append(md.getBegin().get().line)
-                            .append(" might not be checked for null.\n");
-                }
-            });
-        }
-    }
-
-    private static class ResourceClosureChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            md.getBody().ifPresent(body -> {
-                if (body.getStatements().stream().anyMatch(s -> s.toString().contains("open"))) {
-                    if (body.getStatements().stream().noneMatch(s -> s.toString().contains("close"))) {
-                        result.append("  Method ").append(md.getName())
-                                .append(" at line ").append(md.getBegin().get().line)
-                                .append(" might not close opened resources.\n");
-                    }
-                }
-            });
-        }
-    }
-
-    private static class BracesIfElseChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            BlockStmt body = md.getBody().orElse(null);
-            if (body != null) {
-                body.getStatements().forEach(stmt -> {
-                    // Check for missing braces in if-else blocks
-                    if (stmt.toString().contains("if") || stmt.toString().contains("else")) {
-                        if (!stmt.toString().contains("{") || !stmt.toString().contains("}")) {
-                            result.append("  Method ").append(md.getName())
-                                    .append(" at line ").append(stmt.getBegin().get().line)
-                                    .append(" has an if/else block without braces.\n");
-                        }
-                    }
-                });
-            }
-        }
-    }
-}
-
-
-
-++++
-
-
-
-private static class BracesIfElseChecker extends VoidVisitorAdapter<StringBuilder> {
-    @Override
-    public void visit(MethodDeclaration md, StringBuilder result) {
-        super.visit(md, result);
-        BlockStmt body = md.getBody().orElse(null);
-        if (body != null) {
-            body.getStatements().forEach(stmt -> {
-                // Check if the statement is an if-else block
-                if (stmt.toString().contains("if") || stmt.toString().contains("else")) {
-                    // Check for missing opening or closing braces
-                    if (!stmt.toString().contains("{") || !stmt.toString().contains("}")) {
-                        result.append("  Method ").append(md.getName())
-                                .append(" at line ").append(stmt.getBegin().get().line)
-                                .append(" has an if/else block without braces.\n");
-                    }
-                }
-            });
-
-            // Check for any unbalanced braces in the method body
-            String methodBody = body.toString();
-            int openBraces = 0;
-            int closeBraces = 0;
-            for (char c : methodBody.toCharArray()) {
-                if (c == '{') openBraces++;
-                if (c == '}') closeBraces++;
-            }
-            if (openBraces != closeBraces) {
-                result.append("  Method ").append(md.getName())
-                        .append(" at line ").append(md.getBegin().get().line)
-                        .append(" has unbalanced braces.\n");
-            }
-        }
-    }
-}
-
-
-
-
-🥲🥲🥲🥲🥲🥲🥲
-
-
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.stmt.BlockStmt;
-import com.github.javaparser.ast.stmt.Statement;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-
-import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.*;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.List;
+import java.util.Stack;
+import java.util.regex.Pattern;
 
 public class JavaCodeAnalyzer {
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(JavaCodeAnalyzer::createAndShowGUI);
     }
@@ -393,98 +36,86 @@ public class JavaCodeAnalyzer {
                 try {
                     String analysisResult = analyzeJavaFile(selectedFile);
                     resultArea.setText(analysisResult);
-                } catch (FileNotFoundException ex) {
-                    resultArea.setText("Error: File not found!");
+                } catch (IOException ex) {
+                    resultArea.setText("Error reading file: " + ex.getMessage());
                 }
             }
         });
 
         frame.add(openFileButton, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
-
         frame.setVisible(true);
     }
 
-    private static String analyzeJavaFile(File file) throws FileNotFoundException {
+    private static String analyzeJavaFile(File file) throws IOException {
         StringBuilder analysisResult = new StringBuilder();
-        try {
-            String code = new String(Files.readAllBytes(Paths.get(file.getPath())));
 
-            // Check for missing braces and semicolons
-            analysisResult.append("Syntax Issue Analysis:\n");
-            checkForMissingBracesAndSemicolons(code, analysisResult);
+        // Read the file content
+        String content = new String(Files.readAllBytes(file.toPath()));
 
-            // Use JavaParser for method analysis
-            JavaParser parser = new JavaParser();
-            CompilationUnit compilationUnit = parser.parse(file).getResult().orElseThrow(() -> new FileNotFoundException("Unable to parse file"));
+        // Validate for special characters and unmatched braces
+        analysisResult.append("Preliminary Validation:\n");
+        if (!validateJavaCode(content, analysisResult)) {
+            return analysisResult.toString();
+        }
 
-            // Check for try-catch blocks
-            analysisResult.append("\nTry-Catch Block Analysis:\n");
-            new TryCatchBlockChecker().visit(compilationUnit, analysisResult);
-
-            // Check for null assignments
-            analysisResult.append("\nNull Assignment Analysis:\n");
-            new NullAssignmentChecker().visit(compilationUnit, analysisResult);
-
-        } catch (IOException e) {
-            analysisResult.append("Error reading file: ").append(e.getMessage());
+        // Parse the Java code using JavaParser
+        analysisResult.append("\nJavaParser Analysis:\n");
+        CompilationUnit compilationUnit = parseJavaCode(content);
+        if (compilationUnit == null) {
+            analysisResult.append("Failed to parse the Java code due to syntax errors.\n");
+        } else {
+            analysisResult.append("No syntax errors detected. File parsed successfully.\n");
         }
 
         return analysisResult.toString();
     }
 
-    private static void checkForMissingBracesAndSemicolons(String code, StringBuilder result) {
-        // Check for unmatched braces
-        int openBraces = 0;
-        int closeBraces = 0;
-        String[] lines = code.split("\n");
+    private static boolean validateJavaCode(String content, StringBuilder analysisResult) {
+        String[] lines = content.split("\n");
+        Stack<Character> braceStack = new Stack<>();
+        Pattern allowedPattern = Pattern.compile("[a-zA-Z0-9_{}();:.\"'\\<>!@#$%^&*+=|?\\-\\s/\\\*");
+
+        boolean isValid = true;
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].trim();
 
-            // Count opening braces
-            if (line.contains("{")) {
-                openBraces++;
+            // Check for special characters
+            if (!allowedPattern.matcher(line).matches()) {
+                analysisResult.append("Line ").append(i + 1).append(": Contains invalid characters.\n");
+                isValid = false;
             }
 
-            // Count closing braces
-            if (line.contains("}")) {
-                closeBraces++;
-            }
-
-            // Check if semicolon is missing at the end of the statement
-            if (line.matches(".*[^;]\\s*$") && !line.isEmpty() && !line.startsWith("//")) {
-                result.append("Missing semicolon at line ").append(i + 1).append("\n");
-            }
-        }
-
-        if (openBraces != closeBraces) {
-            result.append("Mismatched braces detected. Open braces: ").append(openBraces)
-                    .append(", Close braces: ").append(closeBraces).append("\n");
-        }
-    }
-
-    private static class TryCatchBlockChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            BlockStmt body = md.getBody().orElse(null);
-            if (body != null && body.getStatements().stream().noneMatch(s -> s.isTryStmt())) {
-                result.append("  Method ").append(md.getName()).append(" does not contain a try-catch block.\n");
-            }
-        }
-    }
-
-    private static class NullAssignmentChecker extends VoidVisitorAdapter<StringBuilder> {
-        @Override
-        public void visit(MethodDeclaration md, StringBuilder result) {
-            super.visit(md, result);
-            md.getParameters().forEach(param -> {
-                if (param.getType().isReferenceType() && !param.getAnnotations().isNonEmpty()) {
-                    result.append("  Parameter ").append(param.getName()).append(" in method ")
-                          .append(md.getName()).append(" might not be checked for null.\n");
+            // Check for unmatched braces
+            for (char c : line.toCharArray()) {
+                if (c == '{') {
+                    braceStack.push(c);
+                } else if (c == '}') {
+                    if (braceStack.isEmpty()) {
+                        analysisResult.append("Line ").append(i + 1).append(": Unmatched closing brace '}'.\n");
+                        isValid = false;
+                    } else {
+                        braceStack.pop();
+                    }
                 }
-            });
+            }
+        }
+
+        // Check if all braces were matched
+        if (!braceStack.isEmpty()) {
+            analysisResult.append("Error: Unmatched opening braces '{' detected.\n");
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private static CompilationUnit parseJavaCode(String code) {
+        try {
+            return new JavaParser().parse(code).getResult().orElse(null);
+        } catch (Exception e) {
+            return null;
         }
     }
 }
