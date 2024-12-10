@@ -4,6 +4,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.IfStmt;
+import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.stmt.TryStmt;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
@@ -12,7 +13,6 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Stack;
 
 public class JavaCodeAnalyzer {
     public static void main(String[] args) {
@@ -85,7 +85,9 @@ public class JavaCodeAnalyzer {
     }
 
     private static class CodeChecker extends VoidVisitorAdapter<StringBuilder> {
-        private final Stack<Integer> braceStack = new Stack<>();
+
+        // Track open and closed braces count
+        private int openBraces = 0;
 
         @Override
         public void visit(MethodDeclaration md, StringBuilder result) {
@@ -106,29 +108,29 @@ public class JavaCodeAnalyzer {
                     }
                 });
 
-                // Check unmatched opening braces
-                if (!braceStack.isEmpty()) {
-                    int unmatchedLine = braceStack.peek();
-                    result.append("Unmatched opening brace at line: ").append(unmatchedLine).append("\n");
+                // Check for unmatched opening braces
+                if (openBraces > 0) {
+                    result.append("Unmatched opening brace detected.\n");
                 }
             }
         }
 
-        private void checkBraces(com.github.javaparser.ast.stmt.Statement statement, String statementStr, StringBuilder result) {
-            if (statementStr.contains("{")) {
-                braceStack.push(statement.getBegin().map(pos -> pos.line).orElse(-1));
-            }
-            if (statementStr.contains("}")) {
-                if (!braceStack.isEmpty()) {
-                    braceStack.pop();
-                } else {
-                    int line = statement.getEnd().map(pos -> pos.line).orElse(-1);
-                    result.append("Unmatched closing brace at line: ").append(line).append("\n");
+        private void checkBraces(Statement statement, String statementStr, StringBuilder result) {
+            for (char c : statementStr.toCharArray()) {
+                if (c == '{') {
+                    openBraces++; // Increment on opening brace
+                } else if (c == '}') {
+                    openBraces--; // Decrement on closing brace
+                    if (openBraces < 0) {
+                        result.append("Unmatched closing brace at line: ")
+                                .append(statement.getBegin().map(pos -> pos.line).orElse(-1))
+                                .append("\n");
+                    }
                 }
             }
         }
 
-        private void checkIfElse(com.github.javaparser.ast.stmt.Statement statement, StringBuilder result) {
+        private void checkIfElse(Statement statement, StringBuilder result) {
             if (statement instanceof IfStmt) {
                 IfStmt ifStmt = (IfStmt) statement;
                 if (!ifStmt.getElseStmt().isPresent()) {
@@ -139,7 +141,7 @@ public class JavaCodeAnalyzer {
             }
         }
 
-        private void checkTryCatch(com.github.javaparser.ast.stmt.Statement statement, StringBuilder result) {
+        private void checkTryCatch(Statement statement, StringBuilder result) {
             if (statement instanceof TryStmt) {
                 TryStmt tryStmt = (TryStmt) statement;
                 if (tryStmt.getCatchClauses().isEmpty()) {
@@ -152,7 +154,7 @@ public class JavaCodeAnalyzer {
 
         private void checkNullAssignment(String statementStr, StringBuilder result) {
             if (statementStr.contains(" = null")) {
-                int line = statementStr.contains(" = null") ?
+                int line = statementStr.indexOf(" = null") != -1 ?
                         statementStr.indexOf(" = null") : -1;
                 result.append("Null value assignment detected at line ").append(line).append("\n");
             }
