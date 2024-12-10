@@ -7,6 +7,57 @@ private static boolean validateJavaCode(String content, StringBuilder analysisRe
     for (int i = 0; i < lines.length; i++) {
         String line = lines[i].trim();
 
+        // Check for unmatched braces
+        for (char c : line.toCharArray()) {
+            if (c == '{') {
+                braceStack.push(c);
+            } else if (c == '}') {
+                if (braceStack.isEmpty()) {
+                    analysisResult.append("Line ").append(i + 1).append(": Unmatched closing brace '}'.\n");
+                    isValid = false;
+                } else {
+                    braceStack.pop();
+                }
+            }
+        }
+
+        // Check for missing semicolon if the line ends with a Java statement
+        if (isJavaStatement(line) && !line.endsWith(";")) {
+            analysisResult.append("Line ").append(i + 1).append(": Missing semicolon.\n");
+            isValid = false;
+        }
+    }
+
+    // Check if all braces were matched
+    if (!braceStack.isEmpty()) {
+        analysisResult.append("Error: Unmatched opening braces '{' detected.\n");
+        isValid = false;
+    }
+
+    return isValid;
+}
+
+private static boolean isJavaStatement(String line) {
+    // Check if the line looks like a Java statement (ends with common Java syntax patterns)
+    return line.matches(".*\\b(return|break|continue|throw|new|System\\.out\\.print).*") ||
+           line.matches(".*=.*") || line.matches(".*\\+\\+.*") || line.matches(".*--.*");
+}
+
+
+
+
+
+
+
+private static boolean validateJavaCode(String content, StringBuilder analysisResult) {
+    String[] lines = content.split("\n");
+    Stack<Character> braceStack = new Stack<>();
+
+    boolean isValid = true;
+
+    for (int i = 0; i < lines.length; i++) {
+        String line = lines[i].trim();
+
         // Check for invalid characters (non-ASCII or unexpected symbols)
         if (containsInvalidCharacters(line)) {
             analysisResult.append("Line ").append(i + 1).append(": Contains invalid characters.\n");
