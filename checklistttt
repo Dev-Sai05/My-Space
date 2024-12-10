@@ -1,0 +1,75 @@
+SR.No	ITEM	Microservices Check Point
+1	Code Quality	 Code follows proper naming conventions.
+		 No hard-coded values (all properties should be externalized and configurable).
+		 Avoid redundant imports or unused variables.
+		 Ensure proper exception handling (e.g., RrnException, SrcException).
+		 Ensure logger (Logger logger) is used appropriately for debugging and tracking.
+		
+		
+2	API Endpoints	Verify the correct HTTP method is used (e.g., POST in /PFMOBEnq).
+		 Validate that @RequestMapping("/") works as expected with all the defined routes.
+		 Ensure that @CrossOrigin() allows the intended origins only.
+		
+		
+		
+		
+3	Input Validations	Ensure all validations (e.g., validateRefNum, validateTellerNum, validateOptionCode, validateCIFNumber) return appropriate error codes when invalid data is provided.
+		 Test the system behavior for null, empty, or incorrect data in all input fields like ReferenceNumber, Option, PFNumber, MobileNumber, and CIFNumber.
+		 Validate that @InitBinder blocks or allows the appropriate fields.
+		
+		
+		
+4	Error Handling	Validate that meaningful error codes and descriptions are returned (verify errno and errDesc generation).
+		 Test all scenarios where validation fails and ensure correct error responses (via ErrorResponse).
+		 Ensure error codes in the ErrorCodeMaster.properties file align with system behavior.
+		
+		
+		
+5	Database Integration	 Validate proper database connection initialization (dbconnection.getCBSDBConnection()).
+		 Ensure the code properly handles failures when the database is unreachable.
+		 Validate correct handling of database queries for options like PFNumber, MobileNumber, etc.
+		
+		
+		
+6	Security Headers	Ensure all security headers are correctly set in the response:
+		X-Content-Type-Options: nosniff
+		X-Frame-Options: DENY
+		Content-Security-Policy: default-src 'self'
+		X-XSS-Protection: 1; mode=block
+		
+		
+		
+		
+7	Performance & Load Testing	 Test how the service handles a large volume of requests (e.g., stress test the /PFMOBEnq API).
+		 Ensure the performance impact of service calls (like callPFEnquiryChild and callMOBEnquiryChild) is minimal.
+		
+		
+		
+		
+8	Security Testing	 Verify user authentication and authorization using headers like Teller_Number and Branch_Number.
+		 Check that sensitive data (like PFNumber or MobileNumber) is masked or encrypted when logged.
+		 Validate that Base64 encoding is correctly used when saving initial requests.
+		
+		
+		
+		
+9	Data Validation and Sanitization	 Ensure all incoming request data is sanitized to prevent injection attacks (SQL, XSS).
+		 Test for special character handling in fields like ReferenceNumber, PFNumber, and MobileNumber.
+		
+		
+		
+10	Functional Testing	 Validate the overall flow for getting customer details based on different Option values (PFNumber, MobileNumber).
+		 Ensure the code handles different request formats (JSON vs. other content types).
+		 Check the proper functioning of external service calls (e.g., database, JVM services like JvmLsCallCode and JvmLsEnvRecordArea).
+		
+		
+		
+11	Logging and Auditing	 Validate that sensitive data is not logged (e.g., passwords, tokens, mobile numbers).
+		 Check that all key actions (e.g., successful requests, errors, invalid inputs) are logged.
+		 Ensure logs are generated in the correct format and level (info, warn, error).
+		
+		
+		
+		
+12	Cross-Browser and Cross-Platform Testing	Ensure compatibility of the API when accessed from various browsers and platforms.
+		 Test for CORS functionality when the API is accessed from different domains.
