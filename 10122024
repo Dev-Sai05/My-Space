@@ -282,3 +282,44 @@ public class JavaCodeAnalyzer {
         }
     }
 }
+
+
+
+++++
+
+
+
+private static class BracesIfElseChecker extends VoidVisitorAdapter<StringBuilder> {
+    @Override
+    public void visit(MethodDeclaration md, StringBuilder result) {
+        super.visit(md, result);
+        BlockStmt body = md.getBody().orElse(null);
+        if (body != null) {
+            body.getStatements().forEach(stmt -> {
+                // Check if the statement is an if-else block
+                if (stmt.toString().contains("if") || stmt.toString().contains("else")) {
+                    // Check for missing opening or closing braces
+                    if (!stmt.toString().contains("{") || !stmt.toString().contains("}")) {
+                        result.append("  Method ").append(md.getName())
+                                .append(" at line ").append(stmt.getBegin().get().line)
+                                .append(" has an if/else block without braces.\n");
+                    }
+                }
+            });
+
+            // Check for any unbalanced braces in the method body
+            String methodBody = body.toString();
+            int openBraces = 0;
+            int closeBraces = 0;
+            for (char c : methodBody.toCharArray()) {
+                if (c == '{') openBraces++;
+                if (c == '}') closeBraces++;
+            }
+            if (openBraces != closeBraces) {
+                result.append("  Method ").append(md.getName())
+                        .append(" at line ").append(md.getBegin().get().line)
+                        .append(" has unbalanced braces.\n");
+            }
+        }
+    }
+}
