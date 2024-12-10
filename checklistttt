@@ -1,199 +1,132 @@
-SR.No	ITEM	Microservices Check Point
-1	Code Quality	 Code follows proper naming conventions.
-		 No hard-coded values (all properties should be externalized and configurable).
-		 Avoid redundant imports or unused variables.
-		 Ensure proper exception handling (e.g., RrnException, SrcException).
-		 Ensure logger (Logger logger) is used appropriately for debugging and tracking.
-		
-		
-2	API Endpoints	Verify the correct HTTP method is used (e.g., POST in /PFMOBEnq).
-		 Validate that @RequestMapping("/") works as expected with all the defined routes.
-		 Ensure that @CrossOrigin() allows the intended origins only.
-		
-		
-		
-		
-3	Input Validations	Ensure all validations (e.g., validateRefNum, validateTellerNum, validateOptionCode, validateCIFNumber) return appropriate error codes when invalid data is provided.
-		 Test the system behavior for null, empty, or incorrect data in all input fields like ReferenceNumber, Option, PFNumber, MobileNumber, and CIFNumber.
-		 Validate that @InitBinder blocks or allows the appropriate fields.
-		
-		
-		
-4	Error Handling	Validate that meaningful error codes and descriptions are returned (verify errno and errDesc generation).
-		 Test all scenarios where validation fails and ensure correct error responses (via ErrorResponse).
-		 Ensure error codes in the ErrorCodeMaster.properties file align with system behavior.
-		
-		
-		
-5	Database Integration	 Validate proper database connection initialization (dbconnection.getCBSDBConnection()).
-		 Ensure the code properly handles failures when the database is unreachable.
-		 Validate correct handling of database queries for options like PFNumber, MobileNumber, etc.
-		
-		
-		
-6	Security Headers	Ensure all security headers are correctly set in the response:
-		X-Content-Type-Options: nosniff
-		X-Frame-Options: DENY
-		Content-Security-Policy: default-src 'self'
-		X-XSS-Protection: 1; mode=block
-		
-		
-		
-		
-7	Performance & Load Testing	 Test how the service handles a large volume of requests (e.g., stress test the /PFMOBEnq API).
-		 Ensure the performance impact of service calls (like callPFEnquiryChild and callMOBEnquiryChild) is minimal.
-		
-		
-		
-		
-8	Security Testing	 Verify user authentication and authorization using headers like Teller_Number and Branch_Number.
-		 Check that sensitive data (like PFNumber or MobileNumber) is masked or encrypted when logged.
-		 Validate that Base64 encoding is correctly used when saving initial requests.
-		
-		
-		
-		
-9	Data Validation and Sanitization	 Ensure all incoming request data is sanitized to prevent injection attacks (SQL, XSS).
-		 Test for special character handling in fields like ReferenceNumber, PFNumber, and MobileNumber.
-		
-		
-		
-10	Functional Testing	 Validate the overall flow for getting customer details based on different Option values (PFNumber, MobileNumber).
-		 Ensure the code handles different request formats (JSON vs. other content types).
-		 Check the proper functioning of external service calls (e.g., database, JVM services like JvmLsCallCode and JvmLsEnvRecordArea).
-		
-		
-		
-11	Logging and Auditing	 Validate that sensitive data is not logged (e.g., passwords, tokens, mobile numbers).
-		 Check that all key actions (e.g., successful requests, errors, invalid inputs) are logged.
-		 Ensure logs are generated in the correct format and level (info, warn, error).
-		
-		
-		
-		
-12	Cross-Browser and Cross-Platform Testing	Ensure compatibility of the API when accessed from various browsers and platforms.
-		 Test for CORS functionality when the API is accessed from different domains.
-
-
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.IfStmt;
+import com.github.javaparser.ast.stmt.TryStmt;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import java.io.*;
-import java.util.List;
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.awt.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.Stack;
 
-public class CodeAnalyzer {
-    public static void main(String[] args) throws Exception {
-        // Input Java File
-        File javaFile = new File("PathToYourFile.java");
-
-        // Parse the file
-        CompilationUnit compilationUnit = JavaParser.parse(javaFile);
-
-        // Initialize the result collector
-        StringBuilder report = new StringBuilder();
-
-        // Perform Checks
-        checkCodeQuality(compilationUnit, report);
-        checkApiEndpoints(compilationUnit, report);
-        checkInputValidation(compilationUnit, report);
-        checkErrorHandling(compilationUnit, report);
-        checkSecurityHeaders(compilationUnit, report);
-
-        // Generate the report
-        generateReport(report.toString());
+public class JavaCodeAnalyzer {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(JavaCodeAnalyzer::createAndShowGUI);
     }
 
-    private static void checkCodeQuality(CompilationUnit cu, StringBuilder report) {
-        report.append("1. Code Quality Check:\n");
-        // Check for naming conventions, unused imports, etc.
-        cu.getImports().stream()
-                .filter(importDecl -> importDecl.isUnused())
-                .forEach(importDecl -> report.append("  Unused Import: ").append(importDecl.getName()).append("\n"));
-        cu.findAll(MethodDeclaration.class).forEach(method -> {
-            if (method.getName().asString().equals(method.getName().toUpperCase())) {
-                report.append("  Improper Method Name: ").append(method.getName()).append("\n");
+    private static void createAndShowGUI() {
+        JFrame frame = new JFrame("Java Code Analyzer");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(600, 400);
+        frame.setLayout(new BorderLayout());
+
+        JTextArea resultArea = new JTextArea();
+        resultArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(resultArea);
+
+        JButton openFileButton = new JButton("Open Java File");
+        openFileButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new FileNameExtensionFilter("Java Files", "java"));
+            int returnValue = fileChooser.showOpenDialog(frame);
+            if (returnValue == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                try {
+                    String analysisResult = analyzeJavaFile(selectedFile);
+                    resultArea.setText(analysisResult);
+                } catch (FileNotFoundException ex) {
+                    resultArea.setText("Error: File not found!");
+                }
             }
         });
-        report.append("\n");
+
+        frame.add(openFileButton, BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
+
+        frame.setVisible(true);
     }
 
-    private static void checkApiEndpoints(CompilationUnit cu, StringBuilder report) {
-        report.append("2. API Endpoints Check:\n");
-        cu.findAll(MethodDeclaration.class).stream()
-                .filter(md -> md.getAnnotations().toString().contains("@RequestMapping"))
-                .forEach(md -> {
-                    String annotation = md.getAnnotations().toString();
-                    if (!annotation.contains("POST")) {
-                        report.append("  Endpoint '").append(md.getName())
-                                .append("' should use POST method.\n");
-                    }
-                });
-        report.append("\n");
-    }
+    private static String analyzeJavaFile(File file) throws FileNotFoundException {
+        StringBuilder analysisResult = new StringBuilder();
+        JavaParser parser = new JavaParser();
 
-    private static void checkInputValidation(CompilationUnit cu, StringBuilder report) {
-        report.append("3. Input Validation Check:\n");
-        cu.findAll(MethodDeclaration.class).stream()
-                .filter(md -> md.getAnnotations().toString().contains("@InitBinder"))
-                .forEach(md -> {
-                    if (md.getBody().isPresent() && md.getBody().get().getStatements().isEmpty()) {
-                        report.append("  Missing validations in @InitBinder method: ").append(md.getName()).append("\n");
-                    }
-                });
-        report.append("\n");
-    }
+        ParseResult<CompilationUnit> parseResult = parser.parse(file);
 
-    private static void checkErrorHandling(CompilationUnit cu, StringBuilder report) {
-        report.append("4. Error Handling Check:\n");
-        cu.findAll(MethodDeclaration.class).forEach(method -> {
-            if (!method.getBody().isPresent() || !method.getBody().get().toString().contains("try")) {
-                report.append("  Method '").append(method.getName()).append("' has no exception handling.\n");
-            }
-        });
-        report.append("\n");
-    }
+        if (parseResult.isSuccessful() && parseResult.getResult().isPresent()) {
+            CompilationUnit compilationUnit = parseResult.getResult().get();
 
-    private static void checkSecurityHeaders(CompilationUnit cu, StringBuilder report) {
-        report.append("5. Security Headers Check:\n");
-        cu.findAll(MethodDeclaration.class).stream()
-                .filter(md -> md.getAnnotations().toString().contains("@CrossOrigin"))
-                .forEach(md -> {
-                    if (!md.getAnnotations().toString().contains("allowedOrigins")) {
-                        report.append("  Method '").append(md.getName())
-                                .append("' has no specific allowed origins.\n");
-                    }
-                });
-        report.append("\n");
-    }
+            // Brace, Control Flow, Catch Block, and Null Assignment Validation
+            analysisResult.append("Code Analysis:\n");
+            new CodeChecker().visit(compilationUnit, analysisResult);
 
-    private static void generateReport(String content) throws Exception {
-        System.out.println(content);
-
-        // Generate Excel file
-        Workbook workbook = new XSSFWorkbook();
-        Sheet sheet = workbook.createSheet("Code Analysis Report");
-
-        // Write content to Excel
-        String[] lines = content.split("\n");
-        int rowIndex = 0;
-        for (String line : lines) {
-            Row row = sheet.createRow(rowIndex++);
-            Cell cell = row.createCell(0);
-            cell.setCellValue(line);
+        } else {
+            analysisResult.append("Error: Unable to parse the file.\n");
         }
 
-        // Save to file
-        FileOutputStream fos = new FileOutputStream("Code_Analysis_Report.xlsx");
-        workbook.write(fos);
-        fos.close();
-        workbook.close();
+        return analysisResult.toString();
+    }
 
-        System.out.println("Report generated: Code_Analysis_Report.xlsx");
+    private static class CodeChecker extends VoidVisitorAdapter<StringBuilder> {
+        private final Stack<Integer> braceStack = new Stack<>();
+
+        @Override
+        public void visit(MethodDeclaration md, StringBuilder result) {
+            super.visit(md, result);
+            BlockStmt body = md.getBody().orElse(null);
+            if (body != null) {
+                // Check each statement for braces, control flow, catch block, and null assignment
+                body.getStatements().forEach(statement -> {
+                    String statementStr = statement.toString();
+                    if (statementStr.contains("{")) {
+                        braceStack.push(statement.getBegin().map(pos -> pos.line).orElse(-1));
+                    }
+                    if (statementStr.contains("}")) {
+                        if (!braceStack.isEmpty()) {
+                            braceStack.pop();
+                        } else {
+                            int line = statement.getEnd().map(pos -> pos.line).orElse(-1);
+                            result.append("Unmatched closing brace at line: ").append(line).append("\n");
+                        }
+                    }
+
+                    // Check for if/else structures
+                    if (statement instanceof IfStmt) {
+                        IfStmt ifStmt = (IfStmt) statement;
+                        if (!ifStmt.getElseStmt().isPresent()) {
+                            int line = statement.getBegin().map(pos -> pos.line).orElse(-1);
+                            result.append("If statement at line ").append(line)
+                                    .append(" has no corresponding else statement.\n");
+                        }
+                    }
+
+                    // Check for try/catch blocks and verify catch block implementation
+                    if (statement instanceof TryStmt) {
+                        TryStmt tryStmt = (TryStmt) statement;
+                        if (tryStmt.getCatchClauses().isEmpty()) {
+                            int line = statement.getBegin().map(pos -> pos.line).orElse(-1);
+                            result.append("Try block at line ").append(line)
+                                    .append(" has no catch block.\n");
+                        }
+                    }
+
+                    // Check for null assignments (null value being assigned to variables)
+                    if (statementStr.contains(" = null")) {
+                        int line = statement.getBegin().map(pos -> pos.line).orElse(-1);
+                        result.append("Null value assignment at line ").append(line).append("\n");
+                    }
+                });
+
+                // Check if there are unmatched opening braces
+                if (!braceStack.isEmpty()) {
+                    int unmatchedLine = braceStack.peek();
+                    result.append("Unmatched opening brace at line: ").append(unmatchedLine).append("\n");
+                }
+            }
+        }
     }
 }
