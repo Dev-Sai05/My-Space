@@ -1,0 +1,74 @@
+ .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::        (v2.3.6.RELEASE)
+
+2024-12-21 17:36:09,598 INFO org.springframework.boot.StartupInfoLogger [main] Starting OpenBankingServicesApp on vc-balanceenq-56f6685fb9-chqzt with PID 11 (/opt/TCS/Balance_Enq.jar started by ? in /home/jboss)
+|||2024-12-21 17:36:09,607 INFO org.springframework.boot.SpringApplication [main] No active profile set, falling back to default profiles: default
+|||2024-12-21 17:36:39,497 INFO org.springframework.data.repository.config.RepositoryConfigurationDelegate [main] Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+|||2024-12-21 17:36:39,714 INFO org.springframework.data.repository.config.RepositoryConfigurationDelegate [main] Finished Spring Data repository scanning in 207ms. Found 3 JPA repository interfaces.
+|||2024-12-21 17:36:39,716 INFO org.springframework.data.repository.config.RepositoryConfigurationDelegate [main] Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+|||2024-12-21 17:36:39,717 INFO org.springframework.data.repository.config.RepositoryConfigurationDelegate [main] Finished Spring Data repository scanning in 0ms. Found 0 JPA repository interfaces.
+|||Config.properties configuration successful
+2024-12-21 17:36:41,068 INFO com.tcs.bancs.microservices.util.AggregatorConfigLoader [main] TableConfiguration.properties configuration successful
+|||2024-12-21 17:36:41,071 INFO com.tcs.bancs.microservices.util.AggregatorConfigLoader [main] SYSCDetails.properties configuration successful
+|||2024-12-21 17:36:42,711 INFO org.springframework.boot.web.embedded.tomcat.TomcatWebServer [main] Tomcat initialized with port(s): 8085 (http)
+|||2024-12-21 17:36:42,776 INFO org.apache.juli.logging.DirectJDKLog [main] Initializing ProtocolHandler ["http-nio-8085"]
+|||2024-12-21 17:36:42,777 INFO org.apache.juli.logging.DirectJDKLog [main] Starting service [Tomcat]
+|||2024-12-21 17:36:42,777 INFO org.apache.juli.logging.DirectJDKLog [main] Starting Servlet engine: [Apache Tomcat/9.0.39]
+|||2024-12-21 17:36:42,883 INFO org.apache.juli.logging.DirectJDKLog [main] Initializing Spring embedded WebApplicationContext
+|||2024-12-21 17:36:42,883 INFO org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext [main] Root WebApplicationContext: initialization completed in 33097 ms
+|||2024-12-21 17:36:43,872 ERROR org.apache.juli.logging.DirectJDKLog [main] For security constraints with URL pattern [/*] only the HTTP methods [TRACE HEAD DELETE OPTIONS PUT] are covered. All other methods are uncovered.
+|||2024-12-21 17:36:44,700 INFO org.hibernate.jpa.internal.util.LogHelper [main] HHH000204: Processing PersistenceUnitInfo [name: ref]
+|||2024-12-21 17:36:44,806 INFO org.hibernate.Version [main] HHH000412: Hibernate ORM core version 5.4.23.Final
+|||2024-12-21 17:36:45,080 INFO org.hibernate.annotations.common.reflection.java.JavaReflectionManager [main] HCANN000001: Hibernate Commons Annotations {5.1.2.Final}
+|||2024-12-21 17:36:45,868 INFO com.zaxxer.hikari.HikariDataSource [main] BalanceEnq-RefDBPool - Starting...
+|||2024-12-21 17:36:45,873 WARN com.zaxxer.hikari.util.DriverDataSource [main] Registered driver with driverClassName=oracle.jdbc.driver.OracleDriver was not found, trying direct instantiation.
+|||2024-12-21 17:36:47,106 INFO com.zaxxer.hikari.HikariDataSource [main] BalanceEnq-RefDBPool - Start completed.
+|||2024-12-21 17:36:47,184 INFO org.hibernate.dialect.Dialect [main] HHH000400: Using dialect: com.tcs.bancs.microservices.configuration.CustomOracleDialect
+|||2024-12-21 17:36:48,512 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Syscpk
+|||2024-12-21 17:36:48,512 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Syscpk
+|||2024-12-21 17:36:48,513 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Migenqpk_t2
+|||2024-12-21 17:36:48,513 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Migenqpk_t2
+|||2024-12-21 17:36:48,568 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Migenqpk_t1
+|||2024-12-21 17:36:48,569 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Migenqpk_t1
+|||2024-12-21 17:36:48,570 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Migenqpk_t3
+|||2024-12-21 17:36:48,570 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Migenqpk_t3
+|||2024-12-21 17:36:48,703 INFO org.hibernate.validator.internal.util.Version [main] HV000001: Hibernate Validator 6.0.10.Final
+|||2024-12-21 17:36:49,892 INFO org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator [main] HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+|||2024-12-21 17:36:49,901 INFO org.springframework.orm.jpa.AbstractEntityManagerFactoryBean [main] Initialized JPA EntityManagerFactory for persistence unit 'ref'
+|||2024-12-21 17:36:49,977 INFO org.hibernate.jpa.internal.util.LogHelper [main] HHH000204: Processing PersistenceUnitInfo [name: day]
+|||2024-12-21 17:36:50,276 INFO com.zaxxer.hikari.HikariDataSource [main] BalanceEnq-DayDBPool - Starting...
+|||2024-12-21 17:36:50,276 WARN com.zaxxer.hikari.util.DriverDataSource [main] Registered driver with driverClassName=oracle.jdbc.driver.OracleDriver was not found, trying direct instantiation.
+|||2024-12-21 17:36:50,525 INFO com.zaxxer.hikari.HikariDataSource [main] BalanceEnq-DayDBPool - Start completed.
+|||2024-12-21 17:36:50,526 INFO org.hibernate.dialect.Dialect [main] HHH000400: Using dialect: com.tcs.bancs.microservices.configuration.CustomOracleDialect
+|||2024-12-21 17:36:50,977 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Syscpk
+|||2024-12-21 17:36:50,977 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Syscpk
+|||2024-12-21 17:36:50,978 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Migenqpk_t2
+|||2024-12-21 17:36:50,978 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Migenqpk_t2
+|||2024-12-21 17:36:50,979 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Migenqpk_t1
+|||2024-12-21 17:36:50,979 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Migenqpk_t1
+|||2024-12-21 17:36:50,979 WARN org.hibernate.mapping.RootClass [main] HHH000038: Composite-id class does not override equals(): com.tcs.bancs.microservices.db.model.Migenqpk_t3
+|||2024-12-21 17:36:50,979 WARN org.hibernate.mapping.RootClass [main] HHH000039: Composite-id class does not override hashCode(): com.tcs.bancs.microservices.db.model.Migenqpk_t3
+|||2024-12-21 17:36:51,195 INFO org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator [main] HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+|||2024-12-21 17:36:51,196 INFO org.springframework.orm.jpa.AbstractEntityManagerFactoryBean [main] Initialized JPA EntityManagerFactory for persistence unit 'day'
+|||2024-12-21 17:36:52,101 INFO com.tcs.bancs.microservices.configuration.PropertyLoader [main] File Loaded
+|||2024-12-21 17:36:52,102 INFO com.tcs.bancs.microservices.configuration.PropertyLoader [main] File Loaded
+|||2024-12-21 17:36:52,108 INFO com.tcs.bancs.microservices.configuration.PropertyLoader [main] File Loaded
+|||2024-12-21 17:36:52,780 WARN org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration$JpaWebConfiguration [main] spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+|||2024-12-21 17:36:53,502 INFO org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver [main] Exposing 14 endpoint(s) beneath base path '/actuator'
+|||2024-12-21 17:36:53,706 INFO springfox.documentation.spring.web.PropertySourcedRequestMappingHandlerMapping [main] Mapped URL path [/v2/api-docs] onto method [springfox.documentation.swagger2.web.Swagger2Controller#getDocumentation(String, HttpServletRequest)]
+|||Config.properties configuration successful
+2024-12-21 17:36:54,185 INFO org.springframework.scheduling.concurrent.ExecutorConfigurationSupport [main] Initializing ExecutorService 'applicationTaskExecutor'
+|||2024-12-21 17:36:54,869 INFO org.apache.juli.logging.DirectJDKLog [main] Starting ProtocolHandler ["http-nio-8085"]
+|||2024-12-21 17:36:54,892 INFO org.springframework.boot.web.embedded.tomcat.TomcatWebServer [main] Tomcat started on port(s): 8085 (http) with context path ''
+|||2024-12-21 17:36:54,893 INFO springfox.documentation.spring.web.plugins.DocumentationPluginsBootstrapper [main] Context refreshed
+|||2024-12-21 17:36:54,913 INFO springfox.documentation.spring.web.plugins.DocumentationPluginsBootstrapper [main] Found 1 custom documentation plugin(s)
+|||2024-12-21 17:36:55,001 INFO springfox.documentation.spring.web.scanners.ApiListingReferenceScanner [main] Scanning for api listing references
+|||2024-12-21 17:36:55,506 INFO org.springframework.boot.StartupInfoLogger [main] Started OpenBankingServicesApp in 47.299 seconds (JVM running for 48.234)
+|||2024-12-21 17:36:56,015 INFO org.apache.juli.logging.DirectJDKLog [http-nio-8085-exec-2] Initializing Spring DispatcherServlet 'dispatcherServlet'
+|||2024-12-21 17:36:56,016 INFO org.springframework.web.servlet.FrameworkServlet [http-nio-8085-exec-2] Initializing Servlet 'dispatcherServlet'
+|||2024-12-21 17:36:56,069 INFO org.springframework.web.servlet.FrameworkServlet [http-nio-8085-exec-2] Completed initialization in 52 ms
