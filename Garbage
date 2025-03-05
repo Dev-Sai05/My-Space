@@ -1,0 +1,158 @@
+//           SBI Core Banking Project, Hyderabad, India.          *
+//*****************************************************************
+//                                                                *
+//  	           PROGRAM - YONO_Child                 
+//                                                                *
+//*****************************************************************
+//                 P R O G R A M    H I S T O R Y                 *
+//                                                                *
+//   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+//----------------------------------------------------------------*
+//Sai Gopi B      : 13/12/2024    : 24100209  :   MICROSERVICES   *
+//Rohith Kumar M  : 13/12/2024    : 24100209  :   MICROSERVICES   *
+//----------------------------------------------------------------*
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.*;
+import java.io.FileInputStream;
+import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import javax.sql.DataSource;
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.config.CacheConfig;
+import com.tcs.bancs.microservices.configuration.PropertyLoader;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.JvmArrayOutputOut;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.JvmIn60457CifNo;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.JvmIn60457OptnFlag;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.JvmInBranchNo;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.JvmInTellerNo;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.JvmOutCifDetails;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.JvmOutErrorNo;
+import com.tcs.bancs.microservices.jvm.jvmYONO.JVM60457.LsRecordArea;
+import com.tcs.bancs.microservices.util.FrameworkConstants;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.ReferenceQueue;
+
+
+public class YONO_Child {
+	
+	Logger logger = LoggerFactory.getLogger(YONO_Child.class);
+	//Changed
+//	private static ReferenceQueue<RunUnit> refQueue = new ReferenceQueue<>();
+//
+//    static class RunUnitCleaner extends PhantomReference<RunUnit> {
+//        public RunUnitCleaner(RunUnit run1) {
+//            super(run1, refQueue);
+//        }
+//
+//        public void cleanUp() {
+//            System.out.println("RunUnit is no longer referenced. Cleaning up...");
+//        }
+//    }
+  //Changed
+	   Connection connection;
+
+	public List<String> callYONOEnquiryChild(String branch_number,  String tellerno, String cifno, String option_flag, DataSource datasource, String commonArea) throws InterruptedException, ExecutionException {
+		int index;
+		String Output_Acc = "";
+		String cif_details;
+		String errno;
+		   JVM60457 jvm60457 = new JVM60457();
+		
+		logger.info("VC------------------------YONO Enquiry Child Service Started------------------------VC");
+		
+		JvmIn60457CifNo     cif_number        = new JvmIn60457CifNo();
+		JvmIn60457OptnFlag  opt_flag          = new JvmIn60457OptnFlag();
+		JvmInBranchNo       branch_num        = new JvmInBranchNo();
+		JvmInTellerNo       teller_num        = new JvmInTellerNo();
+		LsRecordArea 		Rec_Area          = new LsRecordArea();
+		JvmOutCifDetails    out_cif_details   = new JvmOutCifDetails();
+		JvmArrayOutputOut   out_account_array = new JvmArrayOutputOut();
+		JvmOutErrorNo       out_error_num     = new JvmOutErrorNo();
+         
+
+		
+		teller_num.setJvmInTellerNo(String.format("%016d", new BigInteger(tellerno)));
+		cif_number.setJvmIn60457CifNo(String.format("%017d", new BigInteger(cifno)));
+		opt_flag.setJvmIn60457OptnFlag(option_flag);
+		branch_num.setJvmInBranchNo(branch_number);
+		Rec_Area.setLsRecordArea(commonArea);
+		 RunUnit run1 = new RunUnit();
+		 //Changed
+//		 RunUnitCleaner cleaner = new RunUnitCleaner(run1);
+//
+//		 System.out.println("RunUnit Created: " + run1);  // Print RunUnit reference
+
+	        Runtime runtime = Runtime.getRuntime();
+	        long memoryBefore = runtime.totalMemory() - runtime.freeMemory();
+	        System.out.println("Memory Before RunUnit Execution: " + memoryBefore + " bytes");
+	        //Changed
+		 try (Connection connection = datasource.getConnection()){
+			
+	            run1.Add(jvm60457);
+	            //Changed
+	            System.out.println("COBOL program added to RunUnit.");
+	            //Changed
+ 	    		run1.Call("JVM60457", cif_number.get_Reference(), opt_flag.get_Reference(), branch_num.get_Reference(), teller_num.get_Reference(), out_cif_details.get_Reference(), out_account_array.get_Reference(),  out_error_num.get_Reference(), Rec_Area.get_Reference(),connection);
+ 	    		errno = out_error_num.getJvmOutErrorNo();
+		 } catch (SQLException e) {
+//START OF CR 25010156
+//		     errno = "VC010";
+			 errno = "3293";
+//END OF CR 25010156
+		}
+		 
+			 cif_details = out_cif_details.getJvmOutCifDetails();
+			index = 0;
+			while (index <= 9999) {
+				String account_details = out_account_array.getJvmOutput60457Output(index);
+				if (!account_details.trim().isEmpty()) {
+					Output_Acc = Output_Acc + account_details;
+					index+=1;
+				}
+				else {
+					break;
+				}
+			}
+			  run1.close();
+			  System.out.println("RunUnit closed successfully.");
+		      //  run1 = null;
+		        Runtime.getRuntime().gc();
+//			  System.runFinalization();
+//			  Runtime.getRuntime().runFinalization();
+//		        if (refQueue.poll() != null) {
+//		            cleaner.cleanUp();
+//		        }
+
+		        long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+		        System.out.println("Memory After Execution: " + memoryAfter + " bytes");
+
+		        if (memoryAfter > memoryBefore) {
+		            System.out.println("Possible Memory Leak Detected");
+		        } else {
+		            System.out.println("Memory Released Successfully.");
+		        }
+		    
+			List<String> res = new ArrayList<>();
+			res.add(cif_details);
+			if (!Output_Acc.isEmpty()) {
+				res.add(Output_Acc.substring(0, Output_Acc.length() - 317));
+			}
+			else {
+				res.add(Output_Acc);
+			}
+			
+			res.add(String.valueOf(index-1));
+			res.add(errno);
+			
+			return res;
+	}
+	}
