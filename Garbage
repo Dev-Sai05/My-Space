@@ -156,3 +156,90 @@ public class YONO_Child {
 			return res;
 	}
 	}
+
+
+_-------------------
+
+
+public List<String> callYONOEnquiryChild(String branch_number, String tellerno, String cifno, String option_flag, DataSource datasource, String commonArea) throws InterruptedException, ExecutionException {
+    int index;
+    String Output_Acc = "";
+    String cif_details;
+    String errno;
+    
+    JVM60457 jvm60457 = new JVM60457();
+    logger.info("VC------------------------YONO Enquiry Child Service Started------------------------VC");
+
+    JvmIn60457CifNo cif_number = new JvmIn60457CifNo();
+    JvmIn60457OptnFlag opt_flag = new JvmIn60457OptnFlag();
+    JvmInBranchNo branch_num = new JvmInBranchNo();
+    JvmInTellerNo teller_num = new JvmInTellerNo();
+    LsRecordArea Rec_Area = new LsRecordArea();
+    JvmOutCifDetails out_cif_details = new JvmOutCifDetails();
+    JvmArrayOutputOut out_account_array = new JvmArrayOutputOut();
+    JvmOutErrorNo out_error_num = new JvmOutErrorNo();
+
+    teller_num.setJvmInTellerNo(String.format("%016d", new BigInteger(tellerno)));
+    cif_number.setJvmIn60457CifNo(String.format("%017d", new BigInteger(cifno)));
+    opt_flag.setJvmIn60457OptnFlag(option_flag);
+    branch_num.setJvmInBranchNo(branch_number);
+    Rec_Area.setLsRecordArea(commonArea);
+
+    RunUnit run1 = new RunUnit();
+
+    Runtime runtime = Runtime.getRuntime();
+    long memoryBefore = runtime.totalMemory() - runtime.freeMemory();
+    logger.info("Memory Before RunUnit Execution: {} bytes", memoryBefore);
+
+    try (Connection connection = datasource.getConnection()) {
+        run1.Add(jvm60457);
+        logger.info("COBOL program added to RunUnit.");
+
+        run1.Call("JVM60457", cif_number.get_Reference(), opt_flag.get_Reference(), branch_num.get_Reference(), teller_num.get_Reference(), 
+                  out_cif_details.get_Reference(), out_account_array.get_Reference(), out_error_num.get_Reference(), Rec_Area.get_Reference(), connection);
+        
+        errno = out_error_num.getJvmOutErrorNo();
+    } catch (SQLException e) {
+        errno = "3293"; // Custom error code
+    } finally {
+        try {
+            run1.close(); // Ensure RunUnit is properly closed
+        } catch (Exception e) {
+            logger.error("Error while closing RunUnit: {}", e.getMessage());
+        }
+        run1 = null; // Help GC identify the object for cleanup
+    }
+
+    cif_details = out_cif_details.getJvmOutCifDetails();
+    index = 0;
+    while (index <= 9999) {
+        String account_details = out_account_array.getJvmOutput60457Output(index);
+        if (!account_details.trim().isEmpty()) {
+            Output_Acc += account_details;
+            index++;
+        } else {
+            break;
+        }
+    }
+
+    long memoryAfter = runtime.totalMemory() - runtime.freeMemory();
+    logger.info("Memory After Execution: {} bytes", memoryAfter);
+
+    if (memoryAfter > memoryBefore) {
+        logger.warn("Possible Memory Leak Detected");
+    } else {
+        logger.info("Memory Released Successfully.");
+    }
+
+    List<String> res = new ArrayList<>();
+    res.add(cif_details);
+    if (!Output_Acc.isEmpty()) {
+        res.add(Output_Acc.substring(0, Output_Acc.length() - 317));
+    } else {
+        res.add(Output_Acc);
+    }
+    res.add(String.valueOf(index - 1));
+    res.add(errno);
+
+    return res;
+}
