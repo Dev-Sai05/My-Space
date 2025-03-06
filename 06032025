@@ -704,3 +704,119 @@ public class MRE1Service_Child {
         executor.shutdown();
     }
 }
+
+
+----------++++++++---------
+
+package com.tcs.bancs.microservices.services;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsAccountNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsBranchNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsProductCode;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsReferenceNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsTransactionType;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsOutputResponse;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsRecordArea;
+
+public class MRE1Service_Child {
+
+    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);
+
+    private static final int NUM_RUN_UNITS = 5;
+    private final ExecutorService executor = Executors.newFixedThreadPool(NUM_RUN_UNITS);
+    private final List<RunUnit> runUnits = new ArrayList<>();
+    private int runUnitIndex = 0; // For round-robin distribution
+    private final Object lock = new Object(); // Lock for thread safety
+
+    public MRE1Service_Child() {
+        // Initialize 5 RunUnit instances
+        for (int i = 0; i < NUM_RUN_UNITS; i++) {
+            runUnits.add(new RunUnit());
+        }
+    }
+
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
+                                      String referencenum, String accountno, String commonArea, 
+                                      Connection connection) throws InterruptedException, ExecutionException {
+
+        logger.info("VC------------------------MRE1 Child Service Started------------------------VC");
+
+        // Get the next run unit index using round-robin
+        int assignedIndex;
+        synchronized (lock) {
+            assignedIndex = runUnitIndex;
+            runUnitIndex = (runUnitIndex + 1) % NUM_RUN_UNITS;
+        }
+
+        // Submit task to the executor
+        Future<List<String>> future = executor.submit(() -> executeTransaction(transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, assignedIndex));
+
+        List<String> result = future.get(); // Wait for execution to complete
+
+        logger.info("VC------------------------MRE1 Child Service Ended------------------------VC");
+        return result;
+    }
+
+    private List<String> executeTransaction(String transactiontype, String productcode, String branchno, 
+                                            String referencenum, String accountno, String commonArea, 
+                                            Connection connection, int assignedIndex) {
+
+        RunUnit runUnit = new RunUnit(); // Always create a new RunUnit
+        JVME1MR jvmmre1 = new JVME1MR();
+
+        LsTransactionType input2 = new LsTransactionType();
+        LsProductCode input3 = new LsProductCode();
+        LsBranchNumber input4 = new LsBranchNumber();
+        LsReferenceNumber input5 = new LsReferenceNumber();
+        LsAccountNumber input6 = new LsAccountNumber();
+        LsOutputResponse output1 = new LsOutputResponse();
+        LsErrorNumber output2 = new LsErrorNumber();
+        LsRecordArea recarea = new LsRecordArea();
+
+        input2.setLsTransactionType(transactiontype);
+        input3.setLsProductCode(productcode);
+        input4.setLsBranchNumber(branchno);
+        input5.setLsReferenceNumber(referencenum);
+        input6.setLsAccountNumber(accountno);
+        recarea.setLsRecordArea(commonArea);
+
+        try {
+            runUnit.Add(jvmmre1);
+            logger.debug("Executing COBOL program JVME1MR for transaction: {}", transactiontype);
+
+            runUnit.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
+                         input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
+                         output2.get_Reference(), recarea.get_Reference(), connection);
+
+            List<String> res = new ArrayList<>();
+            res.add(output1.getLsOutputResponse());
+            res.add(String.valueOf(output2.getLsErrorNumber()));
+
+            return res;
+
+        } catch (Exception e) {
+            logger.error("Error executing transaction: {}", transactiontype, e);
+            throw new RuntimeException(e);
+        } finally {
+            runUnit.close(); // Ensure RunUnit is closed to release DB connection
+        }
+    }
+
+    public void shutdown() {
+        executor.shutdown();
+        for (RunUnit runUnit : runUnits) {
+            runUnit.close();
+        }
+    }
+}
