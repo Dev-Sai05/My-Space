@@ -249,140 +249,113 @@ public class MRE1Service_Child {
 
 -----+++++++++++
 
-package com.tcs.bancs.microservices.services;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+
 import com.microfocus.cobol.runtimeservices.RunUnit;
-import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
-import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MRE1Service_Child {
 
-    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);
-
+    private static final Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);
     private static final int NUM_RUN_UNITS = 5;
     private final ExecutorService executor = Executors.newFixedThreadPool(NUM_RUN_UNITS);
     private final List<RunUnit> runUnits = new ArrayList<>();
-    private int runUnitIndex = 0;
-    private final Object lock = new Object();
-    private volatile long lastTransactionTime = System.currentTimeMillis();
     private final ScheduledExecutorService shutdownScheduler = Executors.newSingleThreadScheduledExecutor();
-    private volatile boolean shutdownInProgress = false; // Flag to prevent shutdown during active transactions
+    private volatile long lastTransactionTime = System.currentTimeMillis();
+    private final Object lock = new Object();
+    private boolean shutdownInProgress = false;
 
     public MRE1Service_Child() {
-        // Initialize RunUnit instances
         for (int i = 0; i < NUM_RUN_UNITS; i++) {
             runUnits.add(new RunUnit());
         }
 
-        // Schedule periodic cleanup (runs every 6 seconds)
-        shutdownScheduler.scheduleWithFixedDelay(this::checkAndShutdown, 6, 6, TimeUnit.SECONDS);
+        // Schedule a periodic check for shutdown every 6 seconds
+        shutdownScheduler.scheduleAtFixedRate(this::checkAndShutdown, 6, 6, TimeUnit.SECONDS);
     }
 
-    public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
-                                      String referencenum, String accountno, String commonArea, 
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno,
+                                      String referencenum, String accountno, String commonArea,
                                       Connection connection) throws InterruptedException, ExecutionException {
 
-        if (shutdownInProgress) {
-            throw new RejectedExecutionException("Service is shutting down, cannot accept new transactions.");
+        if (executor.isShutdown()) {
+            logger.warn("Executor is shut down. Cannot accept new transactions.");
+            throw new RejectedExecutionException("Service is shutting down, rejecting transaction.");
         }
 
-        logger.info("VC------------------------MRE1 Child Service Started------------------------VC");
-
-        int assignedIndex;
         synchronized (lock) {
-            assignedIndex = runUnitIndex;
-            runUnitIndex = (runUnitIndex + 1) % NUM_RUN_UNITS; // Round-robin logic
+            lastTransactionTime = System.currentTimeMillis(); // Reset shutdown timer
         }
 
-        lastTransactionTime = System.currentTimeMillis(); // Update last transaction time
+        int assignedIndex = (int) (Thread.currentThread().getId() % NUM_RUN_UNITS);
+        Future<List<String>> future = executor.submit(() -> executeTransaction(transactiontype, productcode,
+                branchno, referencenum, accountno, commonArea, connection, assignedIndex));
 
-        // Submit transaction execution asynchronously
-        Future<List<String>> future = executor.submit(() -> executeTransaction(
-            transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, assignedIndex
-        ));
-
-        List<String> result = future.get(); // Wait for execution to complete
-
-        logger.info("VC------------------------MRE1 Child Service Ended------------------------VC");
-        return result;
+        return future.get();
     }
 
-    private List<String> executeTransaction(String transactiontype, String productcode, String branchno, 
-                                            String referencenum, String accountno, String commonArea, 
+    private List<String> executeTransaction(String transactiontype, String productcode, String branchno,
+                                            String referencenum, String accountno, String commonArea,
                                             Connection connection, int assignedIndex) {
 
-        RunUnit runUnit;
-        synchronized (lock) {
-            runUnit = runUnits.get(assignedIndex); // Get assigned RunUnit
-        }
-
+        RunUnit runUnit = runUnits.get(assignedIndex);
         JVME1MR jvmmre1 = new JVME1MR();
-
-        LsTransactionType input2 = new LsTransactionType();
-        LsProductCode input3 = new LsProductCode();
-        LsBranchNumber input4 = new LsBranchNumber();
-        LsReferenceNumber input5 = new LsReferenceNumber();
-        LsAccountNumber input6 = new LsAccountNumber();
-        LsOutputResponse output1 = new LsOutputResponse();
-        LsErrorNumber output2 = new LsErrorNumber();
-        LsRecordArea recarea = new LsRecordArea();
-
-        input2.setLsTransactionType(transactiontype);
-        input3.setLsProductCode(productcode);
-        input4.setLsBranchNumber(branchno);
-        input5.setLsReferenceNumber(referencenum);
-        input6.setLsAccountNumber(accountno);
-        recarea.setLsRecordArea(commonArea);
 
         try {
             runUnit.Add(jvmmre1);
-            logger.debug("Executing COBOL program JVME1MR for transaction: {}", transactiontype);
+            runUnit.Call("JVME1MR", new JVME1MR.LsTransactionType(transactiontype).get_Reference(),
+                    new JVME1MR.LsProductCode(productcode).get_Reference(),
+                    new JVME1MR.LsBranchNumber(branchno).get_Reference(),
+                    new JVME1MR.LsReferenceNumber(referencenum).get_Reference(),
+                    new JVME1MR.LsAccountNumber(accountno).get_Reference(),
+                    new JVME1MR.LsOutputResponse().get_Reference(),
+                    new JVME1MR.LsErrorNumber().get_Reference(),
+                    new JVME1MR.LsRecordArea(commonArea).get_Reference(), connection);
 
-            runUnit.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
-                         input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
-                         output2.get_Reference(), recarea.get_Reference(), connection);
+            List<String> result = new ArrayList<>();
+            result.add("Transaction Processed Successfully");
+            result.add("0"); // Assuming 0 is success
 
-            List<String> res = new ArrayList<>();
-            res.add(output1.getLsOutputResponse());
-            res.add(String.valueOf(output2.getLsErrorNumber()));
-
-            return res;
+            return result;
 
         } catch (Exception e) {
-            logger.error("Error executing transaction: {}", transactiontype, e);
+            logger.error("Error executing transaction", e);
             throw new RuntimeException(e);
         } finally {
+            synchronized (lock) {
+                runUnits.set(assignedIndex, new RunUnit()); // Replace RunUnit after execution
+            }
+
             try {
                 if (connection != null && !connection.isClosed()) {
                     connection.close();
                     logger.info("Database connection closed.");
                 }
             } catch (Exception e) {
-                logger.error("Error closing database connection: ", e);
+                logger.error("Error closing database connection", e);
             }
         }
     }
 
     private void checkAndShutdown() {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastTransactionTime >= 6000) { // No transactions in the last 6 seconds
-            shutdown();
+        synchronized (lock) {
+            if (System.currentTimeMillis() - lastTransactionTime >= 6000 && !executor.isShutdown()) {
+                shutdown();
+            }
         }
     }
 
     public void shutdown() {
         synchronized (lock) {
-            if (shutdownInProgress) return; // Prevent duplicate shutdown calls
+            if (shutdownInProgress || executor.isShutdown()) return;
 
             shutdownInProgress = true;
             logger.info("Shutting down service...");
-            
+
             executor.shutdown();
             shutdownScheduler.shutdown();
 
