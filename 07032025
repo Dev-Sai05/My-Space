@@ -272,20 +272,25 @@ public class MRE1Service_Child {
     private final Object lock = new Object();
     private volatile long lastTransactionTime = System.currentTimeMillis();
     private final ScheduledExecutorService shutdownScheduler = Executors.newSingleThreadScheduledExecutor();
+    private volatile boolean shutdownInProgress = false; // Flag to prevent shutdown during active transactions
 
     public MRE1Service_Child() {
-        // Initialize 5 RunUnit instances
+        // Initialize RunUnit instances
         for (int i = 0; i < NUM_RUN_UNITS; i++) {
             runUnits.add(new RunUnit());
         }
 
-        // Schedule periodic memory cleanup (runs every 6 seconds)
+        // Schedule periodic cleanup (runs every 6 seconds)
         shutdownScheduler.scheduleWithFixedDelay(this::checkAndShutdown, 6, 6, TimeUnit.SECONDS);
     }
 
     public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
                                       String referencenum, String accountno, String commonArea, 
                                       Connection connection) throws InterruptedException, ExecutionException {
+
+        if (shutdownInProgress) {
+            throw new RejectedExecutionException("Service is shutting down, cannot accept new transactions.");
+        }
 
         logger.info("VC------------------------MRE1 Child Service Started------------------------VC");
 
@@ -297,7 +302,7 @@ public class MRE1Service_Child {
 
         lastTransactionTime = System.currentTimeMillis(); // Update last transaction time
 
-        // Submit transaction to be executed asynchronously
+        // Submit transaction execution asynchronously
         Future<List<String>> future = executor.submit(() -> executeTransaction(
             transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, assignedIndex
         ));
@@ -314,7 +319,7 @@ public class MRE1Service_Child {
 
         RunUnit runUnit;
         synchronized (lock) {
-            runUnit = runUnits.get(assignedIndex); // Get RunUnit from pool
+            runUnit = runUnits.get(assignedIndex); // Get assigned RunUnit
         }
 
         JVME1MR jvmmre1 = new JVME1MR();
@@ -372,14 +377,22 @@ public class MRE1Service_Child {
     }
 
     public void shutdown() {
-        executor.shutdown();
-        shutdownScheduler.shutdown();
         synchronized (lock) {
+            if (shutdownInProgress) return; // Prevent duplicate shutdown calls
+
+            shutdownInProgress = true;
+            logger.info("Shutting down service...");
+            
+            executor.shutdown();
+            shutdownScheduler.shutdown();
+
             for (RunUnit runUnit : runUnits) {
                 runUnit.close();
             }
             runUnits.clear();
+
+            shutdownInProgress = false;
+            logger.info("MRE1Service_Child shutdown complete.");
         }
-        logger.info("MRE1Service_Child shutdown complete.");
     }
 }
