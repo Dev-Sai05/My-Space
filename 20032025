@@ -88,3 +88,113 @@ public class MRE1Service_Child {
         }
     }
 }
+
+
+
+----------
+
+poc - 2
+
+
+
+package com.tcs.bancs.microservices.services;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsAccountNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsBranchNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsProductCode;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsReferenceNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsTransactionType;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsOutputResponse;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsRecordArea;
+
+public class MRE1Service_Child {
+
+    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);    
+
+    private static RunUnit sharedRunUnit;
+    private static JVME1MR sharedJvmmre1;
+
+    // Thread-local storage for DB connections (each thread gets its own connection)
+    private static ThreadLocal<Connection> threadLocalConnection = new ThreadLocal<>();
+
+    // Initialize RunUnit once
+    static {
+        try {
+            sharedRunUnit = new RunUnit();
+            sharedJvmmre1 = new JVME1MR();
+            sharedRunUnit.Add(sharedJvmmre1);
+            System.out.println("Shared RunUnit initialized.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
+                                      String referencenum, String accountno, String commonArea, Connection connection) {
+
+        logger.info("VC------------------------MRE1 Child Service Started------------------------VC");
+
+        // Store the current DB connection in thread-local storage
+        threadLocalConnection.set(connection);
+
+        synchronized (sharedRunUnit) {  // Ensure thread safety
+            String errno = "";
+            String outResponse = "";
+
+            LsTransactionType input2  = new LsTransactionType();
+            LsProductCode     input3  = new LsProductCode();
+            LsBranchNumber    input4  = new LsBranchNumber();         
+            LsReferenceNumber input5  = new LsReferenceNumber();
+            LsAccountNumber   input6  = new LsAccountNumber();
+            LsOutputResponse  output1 = new LsOutputResponse();
+            LsErrorNumber     output2 = new LsErrorNumber();
+            LsRecordArea      recarea = new LsRecordArea();
+
+            input2.setLsTransactionType(transactiontype);
+            input3.setLsProductCode(productcode);
+            input4.setLsBranchNumber(branchno);
+            input5.setLsReferenceNumber(referencenum);
+            input6.setLsAccountNumber(accountno);
+            recarea.setLsRecordArea(commonArea);
+
+            // Get the current thread's DB connection
+            Connection dbConnection = threadLocalConnection.get();
+
+            sharedRunUnit.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(),
+                               input4.get_Reference(), input5.get_Reference(), input6.get_Reference(), 
+                               output1.get_Reference(), output2.get_Reference(), recarea.get_Reference(), dbConnection);
+
+            outResponse = output1.getLsOutputResponse();
+            errno = String.valueOf(output2.getLsErrorNumber());
+
+            logger.info("VC------------------------MRE1 Child Service Ended------------------------VC");
+
+            List<String> res = new ArrayList<>();
+            res.add(outResponse);
+            res.add(errno);
+
+            // Remove the thread-local DB connection after execution
+            threadLocalConnection.remove();
+
+            return res;
+        }
+    }
+
+    // Cleanup method to close RunUnit when shutting down the application
+    public static void closeRunUnit() {
+        if (sharedRunUnit != null) {
+            sharedRunUnit.close();
+            System.out.println("Shared RunUnit closed.");
+        }
+    }
+}
