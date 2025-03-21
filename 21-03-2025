@@ -107,3 +107,68 @@ public class MRE1Service_Child {
         System.out.println("All RunUnits closed.");
     }
 }
+
+
+----------
+
+
+import java.sql.Connection;
+import java.util.concurrent.*;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
+
+public class MRE1Service_Child {
+    
+    private static final int MAX_RUNUNITS = 50;
+    private static final BlockingQueue<RunUnit> runUnitPool = new LinkedBlockingQueue<>(MAX_RUNUNITS);
+
+    static {
+        // Initialize the pool with 50 shared RunUnits
+        for (int i = 0; i < MAX_RUNUNITS; i++) {
+            RunUnit runUnit = new RunUnit();
+            runUnit.Add(new JVME1MR()); // Add COBOL instance
+            runUnitPool.add(runUnit);
+        }
+    }
+
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
+                                      String referencenum, String accountno, String commonArea, Connection connection) 
+                                      throws InterruptedException, ExecutionException {
+
+        RunUnit run1 = runUnitPool.take(); // Get a shared RunUnit from the pool
+
+        JVME1MR jvmmre1 = (JVME1MR) run1.GetInstance(JVME1MR.class);
+        
+        // Set input parameters
+        jvmmre1.LsTransactionType().setLsTransactionType(transactiontype);
+        jvmmre1.LsProductCode().setLsProductCode(productcode);
+        jvmmre1.LsBranchNumber().setLsBranchNumber(branchno);
+        jvmmre1.LsReferenceNumber().setLsReferenceNumber(referencenum);
+        jvmmre1.LsAccountNumber().setLsAccountNumber(accountno);
+        jvmmre1.LsRecordArea().setLsRecordArea(commonArea);
+
+        // Call COBOL program
+        run1.Call("JVME1MR", jvmmre1.LsTransactionType().get_Reference(), 
+                              jvmmre1.LsProductCode().get_Reference(),
+                              jvmmre1.LsBranchNumber().get_Reference(),
+                              jvmmre1.LsReferenceNumber().get_Reference(),
+                              jvmmre1.LsAccountNumber().get_Reference(),
+                              jvmmre1.LsOutputResponse().get_Reference(),
+                              jvmmre1.LsErrorNumber().get_Reference(),
+                              jvmmre1.LsRecordArea().get_Reference(),
+                              connection);
+
+        // Retrieve response
+        String outResponse = jvmmre1.LsOutputResponse().getLsOutputResponse();
+        String errno = String.valueOf(jvmmre1.LsErrorNumber().getLsErrorNumber());
+
+        // Return the RunUnit back to the pool for reuse
+        runUnitPool.put(run1);
+
+        List<String> res = new ArrayList<>();
+        res.add(outResponse);
+        res.add(errno);
+        return res;
+    }
+}
