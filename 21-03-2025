@@ -1,0 +1,109 @@
+package com.tcs.bancs.microservices.services;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsAccountNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsBranchNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsProductCode;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsReferenceNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsTransactionType;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsOutputResponse;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.LsRecordArea;
+
+public class MRE1Service_Child {
+
+    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);
+
+    // Pool to hold a max of 50 RunUnits
+    private static final int MAX_RUNUNITS = 50;
+    private static final BlockingQueue<RunUnit> runUnitPool = new LinkedBlockingQueue<>(MAX_RUNUNITS);
+
+    // Thread-local storage for DB connections
+    private static final ThreadLocal<Connection> threadLocalConnection = new ThreadLocal<>();
+
+    // Initialize the pool with 50 RunUnits
+    static {
+        for (int i = 0; i < MAX_RUNUNITS; i++) {
+            try {
+                RunUnit runUnit = new RunUnit();
+                runUnit.Add(new JVME1MR());
+                runUnitPool.offer(runUnit);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println("Initialized " + MAX_RUNUNITS + " RunUnits.");
+    }
+
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
+                                      String referencenum, String accountno, String commonArea, Connection connection) throws InterruptedException {
+
+        logger.info("VC------------------------MRE1 Child Service Started------------------------VC");
+
+        // Store the current DB connection in thread-local storage
+        threadLocalConnection.set(connection);
+
+        // Fetch a RunUnit from the pool (wait if none are available)
+        RunUnit runUnit = runUnitPool.take();
+
+        try {
+            String errno = "";
+            String outResponse = "";
+
+            LsTransactionType input2  = new LsTransactionType();
+            LsProductCode     input3  = new LsProductCode();
+            LsBranchNumber    input4  = new LsBranchNumber();
+            LsReferenceNumber input5  = new LsReferenceNumber();
+            LsAccountNumber   input6  = new LsAccountNumber();
+            LsOutputResponse  output1 = new LsOutputResponse();
+            LsErrorNumber     output2 = new LsErrorNumber();
+            LsRecordArea      recarea = new LsRecordArea();
+
+            input2.setLsTransactionType(transactiontype);
+            input3.setLsProductCode(productcode);
+            input4.setLsBranchNumber(branchno);
+            input5.setLsReferenceNumber(referencenum);
+            input6.setLsAccountNumber(accountno);
+            recarea.setLsRecordArea(commonArea);
+
+            Connection dbConnection = threadLocalConnection.get();
+
+            synchronized (runUnit) { // Ensure thread safety
+                runUnit.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(),
+                        input4.get_Reference(), input5.get_Reference(), input6.get_Reference(), 
+                        output1.get_Reference(), output2.get_Reference(), recarea.get_Reference(), dbConnection);
+            }
+
+            outResponse = output1.getLsOutputResponse();
+            errno = String.valueOf(output2.getLsErrorNumber());
+
+            logger.info("VC------------------------MRE1 Child Service Ended------------------------VC");
+
+            List<String> res = new ArrayList<>();
+            res.add(outResponse);
+            res.add(errno);
+
+            return res;
+        } finally {
+            // Return the RunUnit to the pool after execution
+            runUnitPool.offer(runUnit);
+            threadLocalConnection.remove(); // Remove DB connection from thread-local
+        }
+    }
+
+    // Cleanup method to close all RunUnits
+    public static void closeRunUnits() {
+        for (RunUnit runUnit : runUnitPool) {
+            runUnit.close();
+        }
+        System.out.println("All RunUnits closed.");
+    }
+}
