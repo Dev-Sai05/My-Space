@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.microfocus.cobol.runtimeservices.RunUnit;
 import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
@@ -15,13 +15,15 @@ import com.tcs.bancs.microservices.jvm.e1mr2.JVME1MR2.*;
 
 public class MRE1Service_Child {
 
-    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);    
+    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);
 
     private static RunUnit sharedRunUnit1;
     private static JVME1MR sharedJvmmre1;
 
     private static RunUnit sharedRunUnit2;
     private static JVME1MR2 sharedJvmmre1_2;
+
+    private static final AtomicInteger counter = new AtomicInteger(0);
 
     static {
         try {
@@ -39,19 +41,19 @@ public class MRE1Service_Child {
         }
     }
 
-    public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
-                                      String referencenum, String accountno, String commonArea, 
-                                      String connection, String driverclass) 
-                                      throws InterruptedException, ExecutionException {
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno,
+                                      String referencenum, String accountno, String commonArea,
+                                      String connection, String driverclass) {
 
         logger.info("VC--- MRE1 Dispatcher Service Started | Ref: {} ---VC", referencenum);
 
-        boolean isEvenTransaction = (Integer.parseInt(referencenum) % 2 == 0);
-        RunUnit selectedRunUnit = isEvenTransaction ? sharedRunUnit1 : sharedRunUnit2;
+        int next = counter.getAndIncrement();
+        boolean useProject1 = (next % 2 == 0);
+        RunUnit selectedRunUnit = useProject1 ? sharedRunUnit1 : sharedRunUnit2;
         List<String> res;
 
         synchronized (selectedRunUnit) {
-            if (isEvenTransaction) {
+            if (useProject1) {
                 logger.info("VC--- Routing to Project 1 (JVME1MR) ---VC");
                 res = callProject1(transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, driverclass);
             } else {
@@ -64,15 +66,15 @@ public class MRE1Service_Child {
         return res;
     }
 
-    public List<String> callProject1(String transactiontype, String productcode, String branchno, 
-                                     String referencenum, String accountno, String commonArea, 
+    public List<String> callProject1(String transactiontype, String productcode, String branchno,
+                                     String referencenum, String accountno, String commonArea,
                                      String connection, String driverclass) {
 
         logger.info("VC--- Project 1 Called | Ref: {} ---VC", referencenum);
 
         LsTransactionType input2 = new LsTransactionType();
         LsProductCode input3 = new LsProductCode();
-        LsBranchNumber input4 = new LsBranchNumber();         
+        LsBranchNumber input4 = new LsBranchNumber();
         LsReferenceNumber input5 = new LsReferenceNumber();
         LsAccountNumber input6 = new LsAccountNumber();
         LsVcmiscDriverClass input7 = new LsVcmiscDriverClass();
@@ -90,10 +92,10 @@ public class MRE1Service_Child {
         input8.setLsVcmiscConnectionUrl(connection);
         recarea.setLsRecordArea(commonArea);
 
-        sharedRunUnit1.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(), 
-                            input5.get_Reference(), input6.get_Reference(), output1.get_Reference(), 
-                            output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), 
-                            input7.get_Reference());
+        sharedRunUnit1.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
+                input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
+                output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(),
+                input7.get_Reference());
 
         List<String> res = new ArrayList<>();
         res.add(output1.getLsOutputResponse());
@@ -103,15 +105,15 @@ public class MRE1Service_Child {
         return res;
     }
 
-    public List<String> callProject2(String transactiontype, String productcode, String branchno, 
-                                     String referencenum, String accountno, String commonArea, 
+    public List<String> callProject2(String transactiontype, String productcode, String branchno,
+                                     String referencenum, String accountno, String commonArea,
                                      String connection, String driverclass) {
 
         logger.info("VC--- Project 2 Called | Ref: {} ---VC", referencenum);
 
         LsTransactionType2 input2 = new LsTransactionType2();
         LsProductCode2 input3 = new LsProductCode2();
-        LsBranchNumber2 input4 = new LsBranchNumber2();         
+        LsBranchNumber2 input4 = new LsBranchNumber2();
         LsReferenceNumber2 input5 = new LsReferenceNumber2();
         LsAccountNumber2 input6 = new LsAccountNumber2();
         LsVcmiscDriverClass2 input7 = new LsVcmiscDriverClass2();
@@ -129,10 +131,10 @@ public class MRE1Service_Child {
         input8.setLsVcmiscConnectionUrl2(connection);
         recarea.setLsRecordArea2(commonArea);
 
-        sharedRunUnit2.Call("JVME1MR2", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(), 
-                            input5.get_Reference(), input6.get_Reference(), output1.get_Reference(), 
-                            output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), 
-                            input7.get_Reference());
+        sharedRunUnit2.Call("JVME1MR2", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
+                input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
+                output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(),
+                input7.get_Reference());
 
         List<String> res = new ArrayList<>();
         res.add(output1.getLsOutputResponse2());
