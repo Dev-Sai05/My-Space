@@ -1,0 +1,158 @@
+package com.tcs.bancs.microservices.services;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
+import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR.*;
+import com.tcs.bancs.microservices.jvm.e1mr2.JVME1MR2;
+import com.tcs.bancs.microservices.jvm.e1mr2.JVME1MR2.*;
+
+public class MRE1Service_Child {
+
+    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);
+
+    private static final int POOL_SIZE = 5;
+
+    private static final BlockingQueue<RunUnit> runUnitPool1 = new ArrayBlockingQueue<>(POOL_SIZE);
+    private static final BlockingQueue<RunUnit> runUnitPool2 = new ArrayBlockingQueue<>(POOL_SIZE);
+
+    // Initialize RunUnit Pools
+    static {
+        try {
+            for (int i = 0; i < POOL_SIZE; i++) {
+                RunUnit ru1 = new RunUnit();
+                ru1.Add(new JVME1MR());
+                runUnitPool1.offer(ru1);
+
+                RunUnit ru2 = new RunUnit();
+                ru2.Add(new JVME1MR2());
+                runUnitPool2.offer(ru2);
+            }
+            System.out.println("RunUnit pools initialized.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno,
+                                      String referencenum, String accountno, String commonArea,
+                                      String connection, String driverclass)
+            throws InterruptedException, ExecutionException {
+
+        logger.info("VC--- MRE1 Dispatcher Service Started | Ref: {} ---VC", referencenum);
+        long start = System.currentTimeMillis();
+
+        boolean isEvenTransaction = (Integer.parseInt(referencenum) % 2 == 0);
+        List<String> res;
+        RunUnit runUnit = null;
+
+        try {
+            if (isEvenTransaction) {
+                runUnit = runUnitPool1.take();
+                logger.info("VC--- Routing to Project 1 (JVME1MR) ---VC");
+                res = callProject1(runUnit, transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, driverclass);
+            } else {
+                runUnit = runUnitPool2.take();
+                logger.info("VC--- Routing to Project 2 (JVME1MR2) ---VC");
+                res = callProject2(runUnit, transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, driverclass);
+            }
+        } finally {
+            if (runUnit != null) {
+                if (isEvenTransaction) {
+                    runUnitPool1.offer(runUnit);
+                } else {
+                    runUnitPool2.offer(runUnit);
+                }
+            }
+        }
+
+        logger.info("VC--- MRE1 Dispatcher Service Ended | Ref: {} | Time Taken: {} ms ---VC", referencenum, (System.currentTimeMillis() - start));
+        return res;
+    }
+
+    public List<String> callProject1(RunUnit runUnit, String transactiontype, String productcode, String branchno,
+                                     String referencenum, String accountno, String commonArea, String connection, String driverclass) {
+
+        logger.info("VC--- Project 1 Called | Ref: {} ---VC", referencenum);
+        String errno = "";
+        String outResponse = "";
+
+        LsTransactionType input2 = new LsTransactionType();
+        LsProductCode input3 = new LsProductCode();
+        LsBranchNumber input4 = new LsBranchNumber();
+        LsReferenceNumber input5 = new LsReferenceNumber();
+        LsAccountNumber input6 = new LsAccountNumber();
+        LsVcmiscDriverClass input7 = new LsVcmiscDriverClass();
+        LsVcmiscConnectionUrl input8 = new LsVcmiscConnectionUrl();
+        LsOutputResponse output1 = new LsOutputResponse();
+        LsErrorNumber output2 = new LsErrorNumber();
+        LsRecordArea recarea = new LsRecordArea();
+
+        input2.setLsTransactionType(transactiontype);
+        input3.setLsProductCode(productcode);
+        input4.setLsBranchNumber(branchno);
+        input5.setLsReferenceNumber(referencenum);
+        input6.setLsAccountNumber(accountno);
+        input7.setLsVcmiscDriverClass(driverclass);
+        input8.setLsVcmiscConnectionUrl(connection);
+        recarea.setLsRecordArea(commonArea);
+
+        runUnit.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
+                input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
+                output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), input7.get_Reference());
+
+        outResponse = output1.getLsOutputResponse();
+        errno = String.valueOf(output2.getLsErrorNumber());
+
+        List<String> res = new ArrayList<>();
+        res.add(outResponse);
+        res.add(errno);
+        return res;
+    }
+
+    public List<String> callProject2(RunUnit runUnit, String transactiontype, String productcode, String branchno,
+                                     String referencenum, String accountno, String commonArea, String connection, String driverclass) {
+
+        logger.info("VC--- Project 2 Called | Ref: {} ---VC", referencenum);
+        String errno = "";
+        String outResponse = "";
+
+        LsTransactionType2 input2 = new LsTransactionType2();
+        LsProductCode2 input3 = new LsProductCode2();
+        LsBranchNumber2 input4 = new LsBranchNumber2();
+        LsReferenceNumber2 input5 = new LsReferenceNumber2();
+        LsAccountNumber2 input6 = new LsAccountNumber2();
+        LsVcmiscDriverClass2 input7 = new LsVcmiscDriverClass2();
+        LsVcmiscConnectionUrl2 input8 = new LsVcmiscConnectionUrl2();
+        LsOutputResponse2 output1 = new LsOutputResponse2();
+        LsErrorNumber2 output2 = new LsErrorNumber2();
+        LsRecordArea2 recarea = new LsRecordArea2();
+
+        input2.setLsTransactionType2(transactiontype);
+        input3.setLsProductCode2(productcode);
+        input4.setLsBranchNumber2(branchno);
+        input5.setLsReferenceNumber2(referencenum);
+        input6.setLsAccountNumber2(accountno);
+        input7.setLsVcmiscDriverClass2(driverclass);
+        input8.setLsVcmiscConnectionUrl2(connection);
+        recarea.setLsRecordArea2(commonArea);
+
+        runUnit.Call("JVME1MR2", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
+                input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
+                output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), input7.get_Reference());
+
+        outResponse = output1.getLsOutputResponse2();
+        errno = String.valueOf(output2.getLsErrorNumber2());
+
+        List<String> res = new ArrayList<>();
+        res.add(outResponse);
+        res.add(errno);
+        return res;
+    }
+}
