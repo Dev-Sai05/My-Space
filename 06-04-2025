@@ -3,8 +3,9 @@ package com.tcs.bancs.microservices.services;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
 import com.microfocus.cobol.runtimeservices.RunUnit;
 import com.tcs.bancs.microservices.jvm.e1mr.JVME1MR;
@@ -14,74 +15,64 @@ import com.tcs.bancs.microservices.jvm.e1mr2.JVME1MR2.*;
 
 public class MRE1Service_Child {
 
-    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);
+    Logger logger = LoggerFactory.getLogger(MRE1Service_Child.class);    
 
-    private static final int POOL_SIZE = 10;
+    private static RunUnit sharedRunUnit1;
+    private static JVME1MR sharedJvmmre1;
 
-    private static final List<RunUnit> runUnitPool1 = new ArrayList<>();
-    private static final List<JVME1MR> cobolInstances1 = new ArrayList<>();
-
-    private static final List<RunUnit> runUnitPool2 = new ArrayList<>();
-    private static final List<JVME1MR2> cobolInstances2 = new ArrayList<>();
-
-    private static final AtomicInteger roundRobinCounter1 = new AtomicInteger(0);
-    private static final AtomicInteger roundRobinCounter2 = new AtomicInteger(0);
+    private static RunUnit sharedRunUnit2;
+    private static JVME1MR2 sharedJvmmre1_2;
 
     static {
         try {
-            for (int i = 0; i < POOL_SIZE; i++) {
-                RunUnit ru1 = new RunUnit();
-                JVME1MR cobol1 = new JVME1MR();
-                ru1.Add(cobol1);
-                runUnitPool1.add(ru1);
-                cobolInstances1.add(cobol1);
+            sharedRunUnit1 = new RunUnit();
+            sharedJvmmre1 = new JVME1MR();
+            sharedRunUnit1.Add(sharedJvmmre1);
+            System.out.println("Shared RunUnit1 (JVME1MR) initialized.");
 
-                RunUnit ru2 = new RunUnit();
-                JVME1MR2 cobol2 = new JVME1MR2();
-                ru2.Add(cobol2);
-                runUnitPool2.add(ru2);
-                cobolInstances2.add(cobol2);
-            }
-            System.out.println("Shared RunUnit pools initialized.");
+            sharedRunUnit2 = new RunUnit();
+            sharedJvmmre1_2 = new JVME1MR2();
+            sharedRunUnit2.Add(sharedJvmmre1_2);
+            System.out.println("Shared RunUnit2 (JVME1MR2) initialized.");
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public List<String> callMre1Child(String transactiontype, String productcode, String branchno,
-                                      String referencenum, String accountno, String commonArea,
-                                      String connection, String driverclass) {
+    public List<String> callMre1Child(String transactiontype, String productcode, String branchno, 
+                                      String referencenum, String accountno, String commonArea, 
+                                      String connection, String driverclass) 
+                                      throws InterruptedException, ExecutionException {
 
         logger.info("VC--- MRE1 Dispatcher Service Started | Ref: {} ---VC", referencenum);
-        boolean isEvenTransaction = (Integer.parseInt(referencenum) % 2 == 0);
-        List<String> result;
 
-        if (isEvenTransaction) {
-            int index = roundRobinCounter1.getAndIncrement() % POOL_SIZE;
-            synchronized (runUnitPool1.get(index)) {
-                result = callProject1(transactiontype, productcode, branchno, referencenum,
-                        accountno, commonArea, connection, driverclass, runUnitPool1.get(index));
-            }
-        } else {
-            int index = roundRobinCounter2.getAndIncrement() % POOL_SIZE;
-            synchronized (runUnitPool2.get(index)) {
-                result = callProject2(transactiontype, productcode, branchno, referencenum,
-                        accountno, commonArea, connection, driverclass, runUnitPool2.get(index));
+        boolean isEvenTransaction = (Integer.parseInt(referencenum) % 2 == 0);
+        RunUnit selectedRunUnit = isEvenTransaction ? sharedRunUnit1 : sharedRunUnit2;
+        List<String> res;
+
+        synchronized (selectedRunUnit) {
+            if (isEvenTransaction) {
+                logger.info("VC--- Routing to Project 1 (JVME1MR) ---VC");
+                res = callProject1(transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, driverclass);
+            } else {
+                logger.info("VC--- Routing to Project 2 (JVME1MR2) ---VC");
+                res = callProject2(transactiontype, productcode, branchno, referencenum, accountno, commonArea, connection, driverclass);
             }
         }
 
         logger.info("VC--- MRE1 Dispatcher Service Ended | Ref: {} ---VC", referencenum);
-        return result;
+        return res;
     }
 
-    public List<String> callProject1(String transactiontype, String productcode, String branchno,
-                                     String referencenum, String accountno, String commonArea,
-                                     String connection, String driverclass, RunUnit ru) {
+    public List<String> callProject1(String transactiontype, String productcode, String branchno, 
+                                     String referencenum, String accountno, String commonArea, 
+                                     String connection, String driverclass) {
 
-        logger.info("VC--- Project 1 (JVME1MR) Called | Ref: {} ---VC", referencenum);
+        logger.info("VC--- Project 1 Called | Ref: {} ---VC", referencenum);
+
         LsTransactionType input2 = new LsTransactionType();
         LsProductCode input3 = new LsProductCode();
-        LsBranchNumber input4 = new LsBranchNumber();
+        LsBranchNumber input4 = new LsBranchNumber();         
         LsReferenceNumber input5 = new LsReferenceNumber();
         LsAccountNumber input6 = new LsAccountNumber();
         LsVcmiscDriverClass input7 = new LsVcmiscDriverClass();
@@ -99,24 +90,28 @@ public class MRE1Service_Child {
         input8.setLsVcmiscConnectionUrl(connection);
         recarea.setLsRecordArea(commonArea);
 
-        ru.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
-                input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
-                output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), input7.get_Reference());
+        sharedRunUnit1.Call("JVME1MR", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(), 
+                            input5.get_Reference(), input6.get_Reference(), output1.get_Reference(), 
+                            output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), 
+                            input7.get_Reference());
 
         List<String> res = new ArrayList<>();
         res.add(output1.getLsOutputResponse());
         res.add(String.valueOf(output2.getLsErrorNumber()));
+
+        logger.info("VC--- Project 1 Execution Finished | Ref: {} ---VC", referencenum);
         return res;
     }
 
-    public List<String> callProject2(String transactiontype, String productcode, String branchno,
-                                     String referencenum, String accountno, String commonArea,
-                                     String connection, String driverclass, RunUnit ru) {
+    public List<String> callProject2(String transactiontype, String productcode, String branchno, 
+                                     String referencenum, String accountno, String commonArea, 
+                                     String connection, String driverclass) {
 
-        logger.info("VC--- Project 2 (JVME1MR2) Called | Ref: {} ---VC", referencenum);
+        logger.info("VC--- Project 2 Called | Ref: {} ---VC", referencenum);
+
         LsTransactionType2 input2 = new LsTransactionType2();
         LsProductCode2 input3 = new LsProductCode2();
-        LsBranchNumber2 input4 = new LsBranchNumber2();
+        LsBranchNumber2 input4 = new LsBranchNumber2();         
         LsReferenceNumber2 input5 = new LsReferenceNumber2();
         LsAccountNumber2 input6 = new LsAccountNumber2();
         LsVcmiscDriverClass2 input7 = new LsVcmiscDriverClass2();
@@ -134,13 +129,16 @@ public class MRE1Service_Child {
         input8.setLsVcmiscConnectionUrl2(connection);
         recarea.setLsRecordArea2(commonArea);
 
-        ru.Call("JVME1MR2", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
-                input5.get_Reference(), input6.get_Reference(), output1.get_Reference(),
-                output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), input7.get_Reference());
+        sharedRunUnit2.Call("JVME1MR2", input2.get_Reference(), input3.get_Reference(), input4.get_Reference(), 
+                            input5.get_Reference(), input6.get_Reference(), output1.get_Reference(), 
+                            output2.get_Reference(), recarea.get_Reference(), input8.get_Reference(), 
+                            input7.get_Reference());
 
         List<String> res = new ArrayList<>();
         res.add(output1.getLsOutputResponse2());
         res.add(String.valueOf(output2.getLsErrorNumber2()));
+
+        logger.info("VC--- Project 2 Execution Finished | Ref: {} ---VC", referencenum);
         return res;
     }
 }
