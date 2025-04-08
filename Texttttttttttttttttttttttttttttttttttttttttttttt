@@ -1,0 +1,33 @@
+To
+The General Manager – IT  
+ 
+Subject: Response to Clarification Sought on Visual COBOL Traceability and Microservices Implementation 
+Dear Sir/Madam, 
+We acknowledge receipt of your letter seeking clarification on the utilization of Visual COBOL post the CBS upgrade, specifically regarding the enablement of traceability/tracing and microservices development. We appreciate the opportunity to provide a detailed response.
+ After the CBS migration to Visual COBOL in September 2023, two parallel technical initiatives were undertaken – one focusing on enabling traceability (tracing transactions and debug flow) and the other on facilitating microservices development through Visual COBOL and Java integration. Please find below a structured summary of activities for each track:
+  A. Traceability / Tracing Timeline
+ The tracing functionality was identified as a key enhancement to improve monitoring and debugging of COBOL transactions.
+ - February 2024: Initiated discussions with bank's IT team on traceability requirements and technical options.
+- April 2024: Proof of Concept conducted using Visual COBOL IDE’s tracing capabilities and structured logging.
+- May–July 2024: A solution document was shared, and CRs were initiated by the bank based on the approach.
+- August 2024: Formal approval of the tracing solution; implementation work commenced.
+- October 2024: Tracing feature deployed in the ST environment for PF/Mob; supported UAT teams with live trace analysis.
+- January–March 2025: Trace logs used for real-time debugging during UAT of key CRs; ongoing optimization of logging granularity.
+ 
+ B. Microservices Timeline
+ 
+The CBS upgrade provided an environment conducive to developing and deploying microservices that interact with COBOL modules.
+ 
+- May 2024: Initial POC demonstrated successful invocation of COBOL routines through Java microservices.
+- June–August 2024: Development work started on service components for PF/Mob, E1MR, and CR 60457.
+- September 2024: Frameworks and service templates established; build and deployment initiated.
+- October 2024: PF/Mob service deployed to production; however, live consumption was deferred pending downstream readiness.
+- November 2024 – February 2025: Continued development of microservices and corresponding COBOL service layers for additional CRs.
+- March 2025 onwards: Most components deployed to ST environment and currently under UAT.
+- April 2025: CR 100 microservices undergoing final round of testing with minor observations under resolution.
+ 
+ Conclusion
+ While Visual COBOL’s technical capabilities were made available with the CBS upgrade in September 2023, significant progress on actual implementation, testing, and rollout began in early 2024, once solution designs were finalized and CRs initiated. Both the traceability and microservices tracks have been developed in close coordination with your team and are now reaching maturity.
+ We remain fully committed to supporting the Bank in maximizing the benefits of Visual COBOL and aligning all technical enhancements with your strategic objectives.
+ 
+Thanking you,  
