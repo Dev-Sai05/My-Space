@@ -1,33 +1,168 @@
 To
-The General Manager – IT  
- 
-Subject: Response to Clarification Sought on Visual COBOL Traceability and Microservices Implementation 
-Dear Sir/Madam, 
-We acknowledge receipt of your letter seeking clarification on the utilization of Visual COBOL post the CBS upgrade, specifically regarding the enablement of traceability/tracing and microservices development. We appreciate the opportunity to provide a detailed response.
- After the CBS migration to Visual COBOL in September 2023, two parallel technical initiatives were undertaken – one focusing on enabling traceability (tracing transactions and debug flow) and the other on facilitating microservices development through Visual COBOL and Java integration. Please find below a structured summary of activities for each track:
-  A. Traceability / Tracing Timeline
- The tracing functionality was identified as a key enhancement to improve monitoring and debugging of COBOL transactions.
- - February 2024: Initiated discussions with bank's IT team on traceability requirements and technical options.
-- April 2024: Proof of Concept conducted using Visual COBOL IDE’s tracing capabilities and structured logging.
-- May–July 2024: A solution document was shared, and CRs were initiated by the bank based on the approach.
-- August 2024: Formal approval of the tracing solution; implementation work commenced.
-- October 2024: Tracing feature deployed in the ST environment for PF/Mob; supported UAT teams with live trace analysis.
-- January–March 2025: Trace logs used for real-time debugging during UAT of key CRs; ongoing optimization of logging granularity.
- 
- B. Microservices Timeline
- 
-The CBS upgrade provided an environment conducive to developing and deploying microservices that interact with COBOL modules.
- 
-- May 2024: Initial POC demonstrated successful invocation of COBOL routines through Java microservices.
-- June–August 2024: Development work started on service components for PF/Mob, E1MR, and CR 60457.
-- September 2024: Frameworks and service templates established; build and deployment initiated.
-- October 2024: PF/Mob service deployed to production; however, live consumption was deferred pending downstream readiness.
-- November 2024 – February 2025: Continued development of microservices and corresponding COBOL service layers for additional CRs.
-- March 2025 onwards: Most components deployed to ST environment and currently under UAT.
-- April 2025: CR 100 microservices undergoing final round of testing with minor observations under resolution.
- 
- Conclusion
- While Visual COBOL’s technical capabilities were made available with the CBS upgrade in September 2023, significant progress on actual implementation, testing, and rollout began in early 2024, once solution designs were finalized and CRs initiated. Both the traceability and microservices tracks have been developed in close coordination with your team and are now reaching maturity.
- We remain fully committed to supporting the Bank in maximizing the benefits of Visual COBOL and aligning all technical enhancements with your strategic objectives.
- 
-Thanking you,  
+The General Manager – IT
+
+Subject: Response to Clarification Sought on Visual COBOL Traceability and Microservices Implementation
+
+Dear Sir/Madam,
+
+We acknowledge the receipt of your correspondence seeking clarification regarding the utilization of Visual COBOL following the CBS upgrade, with particular focus on traceability/tracing and microservices development. We appreciate the opportunity to provide a comprehensive response on the progress, challenges, and strategic alignment of these initiatives.
+
+Following the CBS migration to Visual COBOL in September 2023, two major technical workstreams were initiated:
+
+1. Traceability Enablement – to facilitate enhanced debugging and transaction flow monitoring.
+
+
+2. Microservices Development – to enable service-oriented architecture using Java and Visual COBOL integration.
+
+
+
+Please find below a detailed overview of each track:
+
+
+---
+
+A. Traceability / Tracing Timeline
+
+The traceability feature was identified as a key capability to support efficient debugging, improve operational visibility, and ensure audit compliance for COBOL-based transactions.
+
+February 2024: Initial discussions with the Bank’s IT team to capture traceability requirements and assess technical options.
+
+April 2024: Proof of Concept executed using Visual COBOL IDE’s tracing features and structured logging methods.
+
+May – July 2024: Solution documentation submitted; Change Requests (CRs) were initiated accordingly.
+
+August 2024: Formal approval received for the tracing approach; implementation commenced.
+
+October 2024: Tracing features deployed to the ST environment for PF/Mob modules; real-time trace analysis support extended to UAT teams.
+
+January – March 2025: Trace logs were actively leveraged for debugging during UAT cycles of key CRs; ongoing efforts were made to fine-tune the level of logging for optimal performance.
+
+
+
+---
+
+B. Microservices Development Timeline
+
+The CBS upgrade facilitated a conducive environment for implementing a microservices architecture through Visual COBOL and Java integration. The following phases and key challenges were encountered:
+
+May 2024: Initial POC demonstrated successful invocation of COBOL routines via Java-based microservices.
+
+June – August 2024: Development began for services related to PF/Mob, E1MR, and CR 60457.
+
+September 2024: Common frameworks and reusable service templates were finalized; build and deployment processes were initiated.
+
+October 2024: PF/Mob service was deployed to production; however, live consumption was delayed due to downstream system readiness.
+
+November 2024 – February 2025: Microservices and corresponding COBOL modules were developed for additional CRs.
+
+March 2025 onwards: Majority of components deployed to ST environment and are currently under UAT.
+
+April 2025: CR 100 microservices are undergoing final validation, with minor observations being addressed.
+
+
+Additional Observations and Process Details:
+
+1. Code Quality and Security Checks:
+
+Upon completion of development, code is submitted for HP Fortify scanning.
+
+The scan process generally takes 3 to 4 hours, after which observations are shared with the ISD team for review (which takes 4 to 6 hours or up to a day).
+
+Post-ISD review, DGM approval is required, and this timeline varies based on the DGM’s availability.
+
+Only after DGM approval, the CR is eligible for promotion to the ST environment. This process is time-consuming and resource-intensive.
+
+
+
+2. Requirement and Solution Finalization Gaps:
+
+Typically, solution documents should be prepared based on discussions between the functional team and development team.
+
+In our case, development commenced based on high-level inputs, with developers independently drafting solution documents.
+
+This led to multiple deviations and the need to raise numerous child CRs during Visual COBOL microservice development due to lack of detailed requirements.
+
+
+
+3. Parent-Child CR Dependency Management:
+
+A Parent CR is raised and promoted to Pre-Production as per timelines.
+
+During preprod testing, EIS or channel teams raise functional or integration observations.
+
+These issues are resolved through child CRs, which undergo full ST, UAT, and Preprod cycles.
+
+On average, 5 child CRs have been raised per parent CR due to this fragmented approach.
+
+
+
+4. Testing & Sign-Off Delays:
+
+ST testing typically proceeds smoothly and meets the expected timelines.
+
+UAT, however, is governed by the client team. Even after all test data is submitted:
+
+UAT initiation takes 2–3 days,
+
+Execution takes 3–4 days,
+
+And final sign-off by bank officials may take 3–4 days or more, causing delays in promoting CRs to Preprod.
+
+
+Similar delays are observed in Preprod UAT, also handled by the same client UAT team.
+
+
+
+5. Preprod Deployment and Infra Challenges:
+
+Post-preprod promotion, deployment visibility is limited. There is no clear update on pod status, and issue diagnosis is hindered.
+
+Database connection mapping is unclear post-deployment. Region-specific databases are parameterized, making it difficult to confirm connections to DR, NR, or PR sites.
+
+Preprod region databases were found pointing to DR site, causing high response times during performance tests.
+
+
+
+6. Load Testing Constraints:
+
+ST and UAT environments lack adequate infrastructure to support load testing.
+
+Load testing must be conducted in Preprod, which is again connected to the DR site, resulting in degraded performance and skewed test results.
+
+The resulting load reports show high average response times and low TPS, which are then reviewed by TechOps.
+
+
+
+7. TechOps Rejections and Performance Limitations:
+
+Most Visual COBOL microservice CRs are currently deployed in Preprod.
+
+Preprod clearance has been repeatedly withheld by TechOps due to suboptimal TPS and response times.
+
+It is important to note that Visual COBOL microservices are not purely Java-based; they integrate Java with native COBOL logic, which introduces constraints in terms of performance, security handling, and logical refactoring.
+
+TechOps expectations are often based on Java microservice benchmarks, which are not directly applicable to COBOL-integrated services.
+
+This results in multiple re-tests and report resubmissions, often leading to CR rejections during CAB reviews.
+
+
+
+
+
+---
+
+Conclusion
+
+While the CBS upgrade enabled Visual COBOL capabilities in September 2023, actual progress on traceability and microservices implementation began in early 2024 following design finalization and CR initiation. Both tracks have since evolved through rigorous technical planning and close coordination with your team. However, there remain significant procedural, infrastructural, and governance-related challenges that need to be addressed collectively to realize the full potential of Visual COBOL-based microservices.
+
+We remain committed to collaborating with your teams to streamline processes, resolve bottlenecks, and ensure alignment with the Bank’s strategic technology roadmap.
+
+Thanking you,
+Yours sincerely,
+[Your Name]
+[Your Designation]
+[Company Name]
+
+
+---
+
