@@ -440,508 +440,575 @@ public List<String> Balance_Enquiry_Child(List<List<String>> invm, int requested
 
 -----------------------------------------------
 
+////           SBI Core Banking Project, Hyderabad, India.          *
+////*****************************************************************
+////                                                                *
+////  	           PROGRAM - BalanceEnqService_Child.Java                 
+////                                                                *
+////*****************************************************************
+////                 P R O G R A M    H I S T O R Y                 *
+////                                                                *
+////   PROGRAMMER    :    DATE       :  SPR NO   :   COMMENTS       *
+////----------------------------------------------------------------*
+////Naga Sai Ganesh  : 27/11/2024    : 24090013  :  MICROSERVICES   *
+////Niharika Tammana : 27/11/2024    : 24090013  :  MICROSERVICES   *
+////----------------------------------------------------------------*
+////Naga Sai Ganesh : 11/12/2024    :  24120051  :   MICROSERVICES  *
+////Niharika Tammana : 11/12/2024    : 24120051  :  MICROSERVICES   *
+////----------------------------------------------------------------*
+//package com.tcs.bancs.microservices.services;
+//
+//import java.math.BigInteger;
+//import java.sql.Connection;
+//import java.sql.SQLException;
+//import java.util.ArrayList;
+//import java.util.List;
+//
+//import javax.sql.DataSource;
+//
+//import org.apache.commons.lang.StringUtils;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
+//import org.springframework.beans.factory.annotation.Autowired;
+//import org.springframework.stereotype.Controller;
+//import org.springframework.stereotype.Service;
+//import org.springframework.web.bind.annotation.RestController;
+//
+//import com.microfocus.cobol.runtimeservices.RunUnit;
+//import com.tcs.bancs.microservices.db.model.Invm;
+//import com.tcs.bancs.microservices.db.model.Telm;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.LsRecordArea;
+//import com.tcs.bancs.microservices.repository.day.InvmDetailDayRepo;
+//import com.tcs.bancs.microservices.util.DBProcess;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400AccountActiveFlag;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400InpAcctType;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400InputAccountNumber;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400InpEnqType;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400InpIntCat;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400OutputErrorNumber;
+//import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400OutputResponse;
+//
+//@RestController
+//public class BalanceEnqService_Child {
+//
+//	
+//	@Autowired
+//	InvmDetailDayRepo invmRepo;
+//	
+//    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+//   Connection connection;
+//
+//   private static RunUnit sharedRunUnit1;
+//   private static  JVMAVBL sharedJvmmre1; 
+//   
+//   static {
+//       try {
+//           sharedRunUnit1 = new RunUnit();
+//           sharedJvmmre1 = new JVMAVBL();
+//           sharedRunUnit1.Add(sharedJvmmre1);
+//           System.out.println("Shared RunUnit1 initialized.");
+//
+//       } catch (Exception e) {
+//           e.printStackTrace();
+//       }
+//   }
+//   
+//    public List<String> Balance_Enquiry_Child(List<List<String>> accountNumbers, int requestedNumberOfRecords, String lacctno1, DataSource datasource, String inpcommonarea, String refno) throws Exception {
+////        boolean isEvenTransaction = (Integer.parseInt(refno) % 2 == 0);
+////        RunUnit selectedRunUnit = isEvenTransaction ? sharedRunUnit1 : sharedRunUnit2;
+////        String runUnitName = isEvenTransaction ? "RunUnit1" : "RunUnit2";
+////
+////        synchronized (selectedRunUnit) {
+//    	String errno = new String();
+//    	String outResponse = new String();
+//    	List<Invm> invm = new ArrayList<>();
+//    	
+//    	logger.info("VC------------------------Balance_Enquiry_Child started------------------------VC" + refno);
+//        lacctno1 = lacctno1.substring(0, lacctno1.length()-1);
+//        String lacctno =  lacctno1.equals("0000000000000000") ? "0000000000000000" : String.format("%016d", new BigInteger(lacctno1));
+//        
+//        // Split the input account number into chunks of 16 digits
+////        List<String> accountNumbers = splitIntoChunks(accno, 16);
+////        
+////        
+////        ArrayList<Object> queryParamsInvm = new ArrayList<>();
+////		
+////		queryParamsInvm.add(accountNumbers);
+//		
+//		//invm = dbProcess.fetchRepositories(null, "INVM", "InvmDetail", "findByInvmDetails", false,true, queryParamsInvm);
+////		
+////		logger.info("filtered lists " + invm);
+//
+//        //Limit to the first Three two one Records
+//
+////        if (accountNumbers.size()>321) {
+////              
+////              accountNumbers = accountNumbers.subList(0, 321);
+////
+////        }
+//        
+//        //CURR STATUS
+//        
+//
+//        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 30;
+//        StringBuilder allRecordsBuilder = new StringBuilder();
+//        int fetchedRecordsCount = 0;
+//
+//        // If a target account number is provided, find it
+//        if (lacctno != null && !lacctno.isEmpty() && !lacctno.equals("0000000000000000")) {
+//            int index = accountNumbers.indexOf(lacctno);
+//            if (index != -1) {
+//                accountNumbers = accountNumbers.subList(index + 1, accountNumbers.size());
+//                logger.info("Target account number found. Processing records below it" );
+//            } else {
+//                logger.info("Target account number not found in the list.");
+//                // Return error code if account number is not found
+//                List<String> errorRes = new ArrayList<>();
+//                errorRes.add("");
+//                errorRes.add("0");
+//                errorRes.add("0108");  // Error code for not found account number
+//                return errorRes;
+//            }
+//        }
+//
+//        // Process accounts sequentially
+//        for (List<String> nestedList : accountNumbers) {
+//        	logger.info("CALL TO JVM COBOL");
+//        	String accountNumber = nestedList.get(0);
+//        	String accttype = nestedList.get(1);
+//        	String intcat = nestedList.get(2);
+//            if (fetchedRecordsCount >= numberOfRecordsToFetch) {
+//                break; // Stop processing if required number of records is fetched
+//            }
+//            JVMAVBL jvmavbl = new JVMAVBL();
+//            // Create input and output objects for each account number
+//            Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+//            Ls400InpEnqType input2 = new Ls400InpEnqType();
+//            Ls400InpAcctType input3 = new Ls400InpAcctType();
+//            Ls400InpIntCat   input4 = new Ls400InpIntCat();
+//            Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+//            Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+//            Ls400OutputResponse output3 = new Ls400OutputResponse();
+//            LsRecordArea   inputrec = new LsRecordArea();
+////            logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + input8);
+//            // Set input parameters
+//            input1.setLs400InputAccountNumber(accountNumber);
+//            input2.setLs400InpEnqType("1");
+//            input3.setLs400InpAcctType(accttype);
+//            input4.setLs400InpIntCat(intcat);
+//            inputrec.setLsRecordArea(inpcommonarea);
+////            logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + driverclass);
+////            logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + connection);
+//            try (Connection connection = datasource.getConnection()){
+//				//connection = datasource.getConnection();
+////            RunUnit run1 = new RunUnit();
+////            run1.Add(jvmavbl);
+////            
+//            sharedRunUnit1.Call("JVMAVBL", input1.get_Reference(), input2.get_Reference(),  input3.get_Reference(),  input4.get_Reference(), output1.get_Reference(), output2.get_Reference(), output3.get_Reference(), inputrec.get_Reference(), connection);
+//            // Call the JVMAVBL service
+//            //jvmavbl.JVMAVBL(input1, input2, output1, output2, output3, connection, );
+//
+//            errno = output1.getLs400OutputErrorNumber();
+//            outResponse = output3.getLs400OutputResponse();
+//           
+//            if (errno.equals("0000")) {
+//            	errno = "0000";
+//                if (outResponse != null && !outResponse.trim().isEmpty()) {
+//                    allRecordsBuilder.append(outResponse.trim());
+//                    logger.info(fetchedRecordsCount + "Record fetched successfully for account" + refno);
+//                    fetchedRecordsCount++;                   
+//                }
+//            } 
+//            else if(errno.equals("155") || errno.equals("0155")){
+//            	errno = "0155";
+//                break;
+//            }
+//            else {
+//            	errno = "0000";
+//            	logger.info("RECORD NOT FOUND IN INVM");
+//            }
+////            run1.close();
+//            } catch (SQLException e) {
+//            	//START OF IR 25010209
+////            		errno = "VC010";
+//            		errno = "3293";
+//            	//END OF IR 25010209
+//			}
+//        }
+//
+//        // Prepare response
+//        if(fetchedRecordsCount == 0) {
+//        	errno = "0188";
+//        }
+//        List<String> res = new ArrayList<>();
+//        res.add(allRecordsBuilder.toString());
+//        res.add(String.valueOf(fetchedRecordsCount));
+//        res.add(errno); // Return success only if records are fetched
+//
+//        logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + refno);
+//        
+//        return res;
+//    }
+////}
+//    
+//    private List<String> splitIntoChunks(String input, int chunkSize) {
+//        List<String> chunks = new ArrayList<>();
+//        for (int i = 0; i < input.length(); i += chunkSize) {
+//            int end = Math.min(input.length(), i + chunkSize);
+//            String chunk = input.substring(i, end).trim();
+//            // Add only non-empty, non-zero chunks
+//            if (!chunk.isEmpty() && !chunk.matches("^0+$")) {
+//                chunks.add("003" + chunk);
+//            }
+//        }
+//        return chunks;
+//    }
+//
+//    public class ResponseData {
+//        String outResponse;
+//        String errno;
+//    }
+//}
+//
+//
+//
+////package com.tcs.bancs.microservices.services;
+////
+////import java.math.BigInteger;
+////import java.sql.Connection;
+////import java.sql.SQLException;
+////import java.util.*;
+////import java.util.concurrent.*;
+////import java.util.concurrent.atomic.AtomicInteger;
+////
+////import javax.sql.DataSource;
+////
+////import org.slf4j.Logger;
+////import org.slf4j.LoggerFactory;
+////import org.springframework.beans.factory.annotation.Autowired;
+////import org.springframework.web.bind.annotation.RestController;
+////
+////import com.microfocus.cobol.runtimeservices.RunUnit;
+////import com.tcs.bancs.microservices.db.model.Invm;
+////import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+////import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.*;
+////
+////import com.tcs.bancs.microservices.repository.day.InvmDetailDayRepo;
+////
+////@RestController
+////public class BalanceEnqService_Child {
+////
+////    @Autowired
+////    InvmDetailDayRepo invmRepo;
+////
+////    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+////
+////    private static final RunUnit sharedRunUnit1;
+////    private static final JVMAVBL sharedJvmmre1;
+////    private static final RunUnit sharedRunUnit2;
+////    private static final JVMAVBL sharedJvmmre2;
+////    private static final Object lock1 = new Object();
+////    private static final Object lock2 = new Object();
+////    private static final AtomicInteger counter = new AtomicInteger(0);
+////
+////    static {
+////        sharedRunUnit1 = new RunUnit();
+////        sharedJvmmre1 = new JVMAVBL();
+////        sharedRunUnit1.Add(sharedJvmmre1);
+////
+////        sharedRunUnit2 = new RunUnit();
+////        sharedJvmmre2 = new JVMAVBL();
+////        sharedRunUnit2.Add(sharedJvmmre2);
+////
+////        System.out.println("Shared RunUnits initialized.");
+////    }
+////
+////    public List<String> Balance_Enquiry_Child(List<List<String>> accountNumbers, int requestedNumberOfRecords, String lacctno1, DataSource datasource, String inpcommonarea, String refno) throws Exception {
+////        String errno = "";
+////        StringBuilder allRecordsBuilder = new StringBuilder();
+////        int fetchedRecordsCount = 0;
+////
+////        logger.info("VC------------------------Balance_Enquiry_Child started------------------------VC" + refno);
+////
+////        lacctno1 = lacctno1.substring(0, lacctno1.length() - 1);
+////        String lacctno = lacctno1.equals("0000000000000000") ? "0000000000000000" : String.format("%016d", new BigInteger(lacctno1));
+////        int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 30;
+////
+////        if (lacctno != null && !lacctno.isEmpty() && !lacctno.equals("0000000000000000")) {
+////            int index = -1;
+////            for (int i = 0; i < accountNumbers.size(); i++) {
+////                if (accountNumbers.get(i).get(0).equals(lacctno)) {
+////                    index = i;
+////                    break;
+////                }
+////            }
+////            if (index != -1) {
+////                accountNumbers = accountNumbers.subList(index + 1, accountNumbers.size());
+////                logger.info("Target account number found. Processing records below it");
+////            } else {
+////                logger.info("Target account number not found in the list.");
+////                return Arrays.asList("", "0", "0108");
+////            }
+////        }
+////
+////        ExecutorService executor = Executors.newFixedThreadPool(10);
+////        List<Future<String>> futures = new ArrayList<>();
+////
+////        for (List<String> nestedList : accountNumbers) {
+////            if (fetchedRecordsCount >= numberOfRecordsToFetch) break;
+////            BalanceFetchTask task = new BalanceFetchTask(nestedList, datasource, inpcommonarea, refno);
+////            futures.add(executor.submit(task));
+////            fetchedRecordsCount++;
+////        }
+////
+////        for (Future<String> future : futures) {
+////            try {
+////                String response = future.get(2, TimeUnit.SECONDS); // Timeout per task
+////                if (!response.isEmpty()) {
+////                    allRecordsBuilder.append(response);
+////                }
+////            } catch (TimeoutException te) {
+////                logger.warn("COBOL call timeout.");
+////            } catch (Exception e) {
+////                logger.error("Task execution error", e);
+////            }
+////        }
+////
+////        executor.shutdown();
+////
+////        if (fetchedRecordsCount == 0) {
+////            errno = "0188";
+////        } else {
+////            errno = "0000";
+////        }
+////
+////        List<String> res = new ArrayList<>();
+////        res.add(allRecordsBuilder.toString());
+////        res.add(String.valueOf(fetchedRecordsCount));
+////        res.add(errno);
+////
+////        logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + refno);
+////        return res;
+////    }
+////
+////    private class BalanceFetchTask implements Callable<String> {
+////        private final List<String> nestedList;
+////        private final DataSource datasource;
+////        private final String inpcommonarea;
+////        private final String refno;
+////
+////        public BalanceFetchTask(List<String> nestedList, DataSource datasource, String inpcommonarea, String refno) {
+////            this.nestedList = nestedList;
+////            this.datasource = datasource;
+////            this.inpcommonarea = inpcommonarea;
+////            this.refno = refno;
+////        }
+////
+////        @Override
+////        public String call() throws Exception {
+////            StringBuilder result = new StringBuilder();
+////            try (Connection connection = datasource.getConnection()) {
+////                String accountNumber = nestedList.get(0);
+////                String accttype = nestedList.get(1);
+////                String intcat = nestedList.get(2);
+////
+////                Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
+////                Ls400InpEnqType input2 = new Ls400InpEnqType();
+////                Ls400InpAcctType input3 = new Ls400InpAcctType();
+////                Ls400InpIntCat input4 = new Ls400InpIntCat();
+////                Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+////                Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+////                Ls400OutputResponse output3 = new Ls400OutputResponse();
+////                LsRecordArea inputrec = new LsRecordArea();
+////
+////                input1.setLs400InputAccountNumber(accountNumber);
+////                input2.setLs400InpEnqType("1");
+////                input3.setLs400InpAcctType(accttype);
+////                input4.setLs400InpIntCat(intcat);
+////                inputrec.setLsRecordArea(inpcommonarea);
+////
+////                int threadIndex = counter.getAndIncrement() % 2;
+////
+////                if (threadIndex == 0) {
+////                    synchronized (lock1) {
+////                        sharedRunUnit1.Call("JVMAVBL",
+////                            input1.get_Reference(), input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
+////                            output1.get_Reference(), output2.get_Reference(), output3.get_Reference(),
+////                            inputrec.get_Reference(), connection);
+////                    }
+////                } else {
+////                    synchronized (lock2) {
+////                        sharedRunUnit2.Call("JVMAVBL",
+////                            input1.get_Reference(), input2.get_Reference(), input3.get_Reference(), input4.get_Reference(),
+////                            output1.get_Reference(), output2.get_Reference(), output3.get_Reference(),
+////                            inputrec.get_Reference(), connection);
+////                    }
+////                }
+////
+////                String errno = output1.getLs400OutputErrorNumber();
+////                if ("0000".equals(errno)) {
+////                    result.append(output3.getLs400OutputResponse().trim());
+////                    logger.info("Fetched record for account: " + accountNumber + " refno: " + refno);
+////                }
+////
+////            } catch (SQLException e) {
+////                logger.error("DB error: " + nestedList.get(0), e);
+////            } catch (Exception e) {
+////                logger.error("COBOL call error: " + nestedList.get(0), e);
+////            }
+////            return result.toString();
+////        }
+////    }
+////}
 
-      $ SET ilsmartnest
-000100*            SBI Core Banking Project, CBD Belapur               *
-000200*                     Mumbai , India.                            *
-000300******************************************************************
-000400*                                                                *
-000500*  PROGRAM - JVMAVBL.COB                                        *
-000600*                                                                *
-000700******************************************************************
-000800*                 P R O G R A M    H I S T O R Y                 *
-000900*                                                                *
-001000* PROGRAMMER   : DATE       : SPR NO   :COMMENTS                 *
-001100*----------------------------------------------------------------*
-001200* ROHITH KUMAR : 25/11/2024 : 24090013 : PROVIDING THE OUTPUT    *
-001300*                                        BALANCES AS REQUIRED    *
-001400*                                        LIKE 400 ENQUIRY SCREEN *
-001500*----------------------------------------------------------------*
-CHANDU*CHANDRIKA      :11/12/2024 : 24120051 : TO BIND THE DBCONNECTION*
-CHANDU*                                       AND SET THE ENVIRONMENT  * 
-CHANDU*                                       VARIABLES                *
-CHANDU*----------------------------------------------------------------*
-001600 IDENTIFICATION DIVISION.
-001700 PROGRAM-ID. JVMAVBL.
-001800 AUTHOR. TATA CONSULTANCY SERVICES.
-001900 DATE-WRITTEN.  23-08-2024.
-002000 ENVIRONMENT DIVISION.
-002100 CONFIGURATION SECTION.
-002200 SOURCE-COMPUTER. VAX.
-002300 OBJECT-COMPUTER. VAX.
-002400 SPECIAL-NAMES.
-002500 CONSOLE IS CONS.
-002600 INPUT-OUTPUT SECTION.
-002700 FILE-CONTROL.
-002800 DATA DIVISION.
-002900 FILE SECTION.
-003000 WORKING-STORAGE SECTION.
-003100
-003200 01 WA-SERVICES-FLAG                  PIC X(01).
-003300 01 WA-FIRST-TIME-FLAG                PIC X(01) VALUE "Y".
-003400 01 WA-INVM-INPUT-KEY.
-003500    03 WA-SOC-NO                                 PIC X(03).
-003600    03 WA-INPUT-KEY1                             PIC X(16).
-003700*01 WA-OD-INDICATOR1                  PIC X(01) VALUE "N".
-003800*01 WA-OD-INDICATOR2                  PIC X(01) VALUE "N".
-000000 01 WA-COUNT                          PIC 9(03) VALUE 0.
-003900
-004000 01 WA-OUTPUT.
-004100    03 WA-ACCT-NO                      PIC X(20).
-004200    03 WA-AVAIL-BAL                    PIC X(19).
-004300    03 WA-UNCLEAR-FUNDS                PIC X(19).
-004400    03 WA-LIEN-AMOUNT                  PIC X(19).
-004500    03 WA-MOD-BALANCE                  PIC X(19).
-004600    03 WA-OD-INDICATOR                 PIC X(01).
-004700    
-004800 01  STARTAREA.
-004900     COPY STRTAREA IN LIBRYMIS.
-005000     03  WA-INPUT-MESSAGE                .
-005100         05  WA-INPUT-KEY.
-005200             07  WA-INPUT-ACCT-NO        PIC 9(16).
-005300         05  IN0001-SH-ENQ-TYPE          PIC X.
-005400         05  FILLER                      PIC X(965).
-005500          05 FILLER                       PIC X(5018).
-005600     02  WA-OUTPUT-MESSAGE.
-005700     03  WA-OUTPUT-ERR-MSG-NO            PIC 9999.
-005800     03  WA-OUTPUT-MSG-LENGTH            PIC 9999.
-005900     03  WA-OUTPUT-MSG.
-006000         COPY OUTPUTMSG IN LIBRYMIS.
-006100     03  IN0010-DATA-FORMAT REDEFINES WA-OUTPUT-MSG.
-006200         05  IN0010-CUS-ACC-NO           PIC X(20).
-006300         05  IN0010-CURRENCY             PIC XXX.
-006400         05  IN0010-ACCT-STAT            PIC X(18).
-006500         05  IN0010-BRANCH-NO            PIC 9(5).
-006600         05  IN0010-ACCT-TYPE-DESC       PIC X(30).
-006700         05  IN0010-ACCT-TYPE            PIC 9(4).
-006800         05  IN0010-ACCT-CAT             PIC 9(4).
-006900         05  IN0010-INT-METH             PIC X(18).
-007000         05  IN0010-RECEIPT-NO           PIC X(9).
-007100         05  IN0010-INT-RATE-X.                
-007200             07 IN0010-INT-RATE          PIC X(7).
-007300             07 IN0010-INT-RATE-DESC     PIC XX.
-007400         05  IN0010-NAME-1               PIC X(60).
-007500         05  IN0010-NAME-2               PIC X(60).
-007600         05  IN0010-GL-CLASS-CODE        PIC X(25).
-007700         05  IN0010-LAST-ACCT-TYPE-CHG   PIC 99/99/9999.
-007800         05  IN0010-PHONE-NO-RES         PIC X(12).
-007900         05  IN0010-PHONE-NO-BUS         PIC X(12).
-008000         05  IN0010-OPEN-POST-DATE       PIC 99/99/9999
-008100                                         BLANK WHEN ZERO.
-008200         05  IN0010-OPEN-DATE            PIC 99/99/9999
-008300                                         BLANK WHEN ZERO.
-008400         05  IN0010-LAST-MAINT-DT        PIC 99/99/9999
-008500                                         BLANK WHEN ZERO.
-008600         05  IN0010-TERM-DATA.
-008700             07  IN0010-MAT-DATE         PIC 99/99/9999.
-008800             07  IN0010-TERM-FROM        PIC 99/99/9999.
-008900             07  IN0010-TERM-TO          PIC 99/99/9999.
-009000         05  IN0010-OTHER-DATA  REDEFINES IN0010-TERM-DATA.
-009100             07  IN0010-LAST-FIN-DATE    PIC 99/99/9999
-009200                                         BLANK WHEN ZERO.
-009300             07  IN0010-INT-FROM         PIC 99/99/9999
-009400                                         BLANK WHEN ZERO.
-009500             07  IN0010-INT-TO           PIC 99/99/9999
-009600                                         BLANK WHEN ZERO.
-009700         05  IN0010-VISA-EXPIRY-DATE     PIC 99/99/9999
-009800                                         BLANK WHEN ZERO.
-009900         05  IN0010-ACCOUNT-BAL.
-010000             07  IN0010-ACCT-BAL         PIC X(19).
-010100             07  IN0010-ACCT-BAL-DESC    PIC XX.
-010200         05  IN0010-ACCT-BAL-RX REDEFINES IN0010-ACCOUNT-BAL.
-010300             07  FILLER                  PIC XXX.
-010400             07  IN0010-ACCT-BAL-R       PIC S9(14)V999
-010500                                           TRAILING SEPARATE.
-010600         05  IN0010-UNCL-VAL             PIC X(19).
-010700         05  IN0010-SWEEP-BALANCE        PIC X(19).
-010800         05  IN0010-INT-AVAIL            PIC X(19).
-010900         05  IN0010-PB-VAL               PIC X(19).
-011000         05  IN0010-OD-INT-AVAIL         PIC X(19).      
-011100         05  IN0010-INFLATED-BAL         PIC X(19) VALUE SPACE.    
-011200         05  IN0010-PREV-PRD-CR-INT-ADJ  PIC X(19).
-011300
-011400         05  IN0010-CHQ-BKS-ON-ORDER     PIC ZZ.
-011500         05  IN0010-TERM-CHQ-NO          PIC X(8).
-011600         05  IN0010-YTD-INT              PIC X(19).
-011700         05  IN0010-LST-OVRLIMIT-DATE    PIC 99/99/9999.
-011800         05  IN0010-YTD-RES-WH-TAX       PIC X(19).
-011900         05  IN0010-YTD-NON-RES-WH-TAX   PIC X(19).
-012000         05  IN0010-STATEMENT-FREQUENCY  PIC X.
-012100         05  IN0010-STATEMENT-CYCLE      PIC 99.
-012200         05  IN0010-STATEMENT-DAY        PIC 99.
-012300         05  IN0010-UNCL-NO-INT-VAL      PIC X(19).
-012400         05  IN0010-AVAIL-BALANCE.
-012500             07 IN0010-AVAIL-BAL         PIC X(19).              
-012600             07 IN0010-AVAIL-BAL-DESC    PIC XX.
-012700         05  IN0010-VISA-DETAILS.
-012800             07  IN0010-CREDIT-LIMIT.
-012900                 09  IN0010-CR-LIMIT     PIC Z(18)  VALUE SPACES.
-013000                 09  IN0010-CR-LMT-DESC  PIC XX.
-013100             07  IN0010-DR-INTEREST      PIC -(12)9.99999.
-013200             07  IN0010-TOTAL-PURCHASES  PIC X(19) VALUE SPACES.
-013300             07  IN0010-MIN-PAYMENT      PIC X(19) VALUE SPACES.
-013400             07  IN0010-CASH-ADVANCE     PIC X(19) VALUE SPACES.
-013500             07  IN0010-DR-CA-APPLIED    PIC -(12)9.99999.
-013600             07  IN0010-DR-PU-APPLIED    PIC -(12)9.99999.
-013700             07  IN0010-SECURITY-CODE    PIC Z(5) VALUE SPACES.
-013800             07  IN0010-LON-PPF-AMT      PIC X(12) VALUE SPACES.        
-013900         05  IN0010-BOOKING-NUMBER       PIC X(7).  
-014000         05  IN0022-400-DRAWING.
-014100             07  IN0022-400-DRAWING-AMOUNT   PIC X(19).          
-014200             07  IN0022-400-DRAWING-DESC     PIC XX.
-014300         05  IN0022-400-JDCC-NO          PIC 9(17).              
-014400         05  IN0022-400-INB-CUST-NO REDEFINES IN0022-400-JDCC-NO.
-014500             07 IN0022-400-CUST-NO       PIC 9(16).
-014600             07 IN0022-400-CHCK          PIC 9.
-014700         05  IN0022-400-TERM-BASIS       PIC X.
-014800         05  IN0022-400-TERM-LENGTH      PIC 9(4).
-014900         05  IN0022-400-NOMINEE-AVAIL    PIC X.                  
-015000         05  IN0022-400-TERM-YEAR        PIC 9(4).
-015100         05  IN0022-400-TERM-MON         PIC 9(4).
-015200         05  IN0022-400-TERM-DAY         PIC 9(4).
-015300         05  IN0022-400-MAT-DATE         PIC 99/99/9999
-015400                                         BLANK WHEN ZERO.
-015500         05  IN0022-400-MATURITY.
-015600             07  IN0022-400-MAT-VALUE    PIC X(19).
-015700             07  IN0022-400-MAT-DESC     PIC XX.      
-015800         05  IN0022-400-RD-INSTL-NO      PIC 999.        
-015900         05  IN0022-400-HOLD.
-016000             07  IN0022-400-HOLD-VALUE   PIC X(19).
-016100         05  IN0022-400-TERM-VALUE       PIC X(19).
-016200         05  IN0022-400-RD-LST-INSTL-MON PIC 99/99/9999
-016300                                         BLANK WHEN ZERO.        
-016400         05  IN0022-400-PPF-WDL-AMT      PIC X(19).
-016500         05  IN0010-TAG-NUMBER           PIC 9(10).
-016600         05  IN0010-BSAN-NO              PIC Z(06).
-016700         05 FILLER                       PIC X(4992).
-016800          
-016900     02  INVM-RECORD-AREA.
-017000     COPY INVMMAST IN LIBRYINV.
-017100     COPY STRTREST IN LIBRYMIS.
-017200 01  WA-PASSALONG.
-017300     COPY PASALONG IN LIBRYMIS.
-017400/
-017500 01  UT0200-CALL-PARAMS.
-017600     02 UT0200-CALL-AREA.
-017700        COPY UT0200CA IN LIBRYINV.
-017800        COPY DEPPARM IN LIBRYINV.
-017900        COPY UT0200RT IN LIBRYINV.
-018000/
-018100 01  INVH-RECORD-AREA.
-018200     COPY INVHMAST IN LIBRYINV.
-018300
-018400
-018500     COPY DBIOCALL      IN LIBRYMIS.
-018600     COPY UT8500CA      IN LIBRYMIS.
-018700     COPY DBIOMODCA     IN LIBRYMIS.
-018800     03  FILLER         PIC X(300).
-018900     COPY DBIOORAST     IN LIBRYMIS.
-019000     COPY UT0020CA      IN LIBRYMIS.
-019100     COPY UT8500FU      IN LIBRYMIS.
-019200     COPY DBIOMODNAME   IN LIBRYMIS.
-019300     COPY UT0030CA      IN LIBRYMIS.
-NNNNNN************************START OF IR 24120051**********************************
-019400 01 LS-WA-CALL-CODE PIC X(01).
-CHANDU 01 LS-WA-OPT-CODE  PIC X(01).
-CHANDU 01 LS-LS-ENVCA-REC-AREA.
-CHANDU    03 WS-UTENVCA-BANCS-TRACE-STATE      PIC X(01).
-003600    03 WS-UTENVCA-MASTER-DQPTYPE         PIC X(01).
-003700    03 WS-UTENVCA-BANCS-HOST             PIC 9(01).
-003800    03 WS-UTENVCA-FNS-SYSNUM             PIC 9(01).
-003900    03 WS-UTENVCA-CTRL-SYSNUM            PIC 9(01).
-004000    03 WS-UTENVCA-DAY-SYSNUM             PIC 9(01).
-004100    03 WS-UTENVCA-NIGHT-SYSNUM           PIC 9(01).
-004200    03 WS-UTENVCA-NON24H-SYSNUM          PIC 9(01).
-004300    03 WS-UTENVCA-DEF-RMODE              PIC X(01).
-004400    03 WS-UTENVCA-MASTER-DB-1            PIC X(15).
-004500    03 WS-UTENVCA-MASTER-DB-2            PIC X(15).
-004600    03 WS-UTENVCA-SERVICES-FLAG          PIC X(01).
-004700    03 WA-UTENVCA-INSPARAM-FLAG          PIC X(01).
-004800    03 WA-UTENVCA-INSPARAM               PIC X(813).
-CHANDU EXEC SQL INCLUDE SQLCA END-EXEC.
-CHANDU 01 WA-SQLCODE   PIC S9(9).
-       01 FIRST_ENV PIC X(01) VALUE 'Y'.
-NNNNNN************************END OF IR 24120051**********************************
-019500 LINKAGE SECTION.
-019600
-019700*01 LS-400-INPUT-ACCOUNT-NUMBER                 PIC X(16).
-019800 01 LS-400-INP-ENQ-TYPE                         PIC X(01).
-019900 01 LS-400-OUTPUT-ERROR-NUMBER                  PIC X(04).
-020000 01 LS-400-ACCOUNT-ACTIVE-FLAG                  PIC X(01).
-020100 01 LS-400-OUTPUT-RESPONSE                      PIC X(97).
-000000 01 WA-INPUT-COUNT                               PIC X(03).
-000000 01 WA-ARRAY-ACCOUNT 
-000000     03 JVM-WA-INPUT-ACCT   OCCURS 999 TIMES.
-000000        05 LS-400-INPUT-ACCOUNT-NUMBER          PIC X(16).
-031400 01 JVM-ARRAY-OUTPUT-OUT.
-031500    03 JVM-WA-OUTPUT-OUTPUT   OCCURS 999 TIMES.
-031600       05 JVM-OUTPUT-60457-OUTPUT              PIC X(97).
-NNNNNN************************START OF IR 24120051**********************************
-005500 01 LS-CONNECTION-STRING           type java.sql.Connection.
-CHANDU 01 LS-RECORD-AREA.
-CHANDU  COPY UTENVCA         IN LIBRYMIS.
-NNNNNN************************END OF IR 24120051**********************************       
-020300 PROCEDURE DIVISION USING WA-ARRAY-ACCOUNT
-                                WA-INPUT-COUNT
-020400                          LS-400-INP-ENQ-TYPE
-020500                          LS-400-OUTPUT-ERROR-NUMBER
-020600                          LS-400-ACCOUNT-ACTIVE-FLAG
-NNNNNN************************START OF IR 24120051**********************************
-020700*                         LS-400-OUTPUT-RESPONSE.
-CHANDU                          JVM-ARRAY-OUTPUT-OUT
-                                LS-RECORD-AREA
-CHANDU                          BY VALUE LS-CONNECTION-STRING
-CHANDU                          .
-NNNNNN************************END OF IR 24120051**********************************
-020800
-020900 A000-MAIN-PARA.
-02110  
-NNNNNN************************START OF IR 24120051**********************************
-          IF FIRST_ENV = 'Y'
-CHANDU     PERFORM A011-ENV                    THRU A011-EXIT
-CHANDU     PERFORM A010-DBCONNECT              THRU A010-EXIT           
-           MOVE 'N' TO FIRST_ENV
-           END-IF
-NNNNNN************************END OF IR 24120051**********************************
-021300     PERFORM A001-INIT-PARA              THRU A001-EXIT
-021400     PERFORM A002-FIRST-TIME-READ        THRU A002-EXIT
-           MOVE "001" TO WA-INPUT-COUNT
-021500     PERFORM A003-READ-INVM              THRU A003-EXIT
-000000                                         UNTIL WA-COUNT > WA-INPUT-COUNT
-            PERFORM A010-DB-DISCONNECT          THRU A012-EXIT.
-022400 A000-EXIT.
-022500 EXIT.
-022600 EXIT PROGRAM.
-NNNNNN************************START OF IR 24120051**********************************    
-006800 A010-DBCONNECT.
-           display "LS-CONNECTION-STRING " LS-CONNECTION-STRING
-CHANDU         EXEC SQL 
-CHANDU             BIND CONNECTION conn TO :LS-CONNECTION-STRING
-CHANDU         END-EXEC
-CHANDU         MOVE SQLCODE TO WA-SQLCODE
-CHANDU         IF WA-SQLCODE = ZEROS
-032900             SET UT8500CA-NORMAL-DISPLAY TO TRUE
-033000             MOVE UT8500CA-FUNC-NORMAL-DISPLAY
-033100                               TO UT8500CA-CALL-CODE
-033200             MOVE SPACES       TO UT8500CA-INPUT-MSG
-033300             STRING "JVMAVBL(A010): BIND SUCCESSFUL, SQLCODE=" WA-SQLCODE
-033400                     DELIMITED BY SIZE INTO UT8500CA-INPUT-MSG
-033500             MOVE "N" TO UT8500CA-RESPONSE-REQD-FLAG
-033600             CALL "UT8500" USING
-033700                                 UT8500CA-AREA
-CHANDU         ELSE
-032900             SET UT8500CA-NORMAL-DISPLAY TO TRUE
-033000             MOVE UT8500CA-FUNC-NORMAL-DISPLAY
-033100                          TO UT8500CA-CALL-CODE
-033200             MOVE SPACES       TO UT8500CA-INPUT-MSG
-033300             STRING "JVMAVBL(A010): BIND FAILURE, SQLCODE=" WA-SQLCODE
-033400                     DELIMITED BY SIZE INTO UT8500CA-INPUT-MSG
-033500             MOVE "N" TO UT8500CA-RESPONSE-REQD-FLAG
-033600              CALL "UT8500" USING
-033700                                  UT8500CA-AREA
-                    GO TO A010-EXIT
-CHANDU         END-IF
-CHANDU     .
-CHANDU           
-CHANDU A010-EXIT.
-CHANDU     EXIT.  
-           
-nnnnnn  A010-DB-DISCONNECT.
-004800     EXEC SQL
-004900     DISCONNECT CONN
-005000     END-EXEC
-005100      IF SQLCODE = ZEROES
-005200         DISPLAY " CBS DB IS DISCONNECTED."
-005500      ELSE 
-005600         DISPLAY " CBS DB IS NOT DISCONNECTED. SQLCODE IS " 
-               SQLCODE
-005700         DISPLAY " SQL DESCRIPTION IS " SQLERRMC
-005900      END-IF.           
-006000  A012-EXIT.
-006100          EXIT.
-           
-CHANDU A011-ENV.
-CHANDU     INITIALIZE LS-WA-CALL-CODE
-CHANDU                LS-WA-OPT-CODE
-CHANDU                LS-LS-ENVCA-REC-AREA
-CHANDU                WA-SQLCODE.
-CHANDU     MOVE "S" TO LS-WA-CALL-CODE
-CHANDU     MOVE  LS-RECORD-AREA TO LS-LS-ENVCA-REC-AREA
-CHANDU     CALL "JVMUTENV" USING LS-WA-CALL-CODE
-001800                           LS-WA-OPT-CODE
-002000                           LS-LS-ENVCA-REC-AREA. 
-CHANDU A011-EXIT.
-CHANDU     EXIT. 
-NNNNNN************************END OF IR 24120051**********************************           
-022800 A001-INIT-PARA.
-022900
-023000
-023100     INITIALIZE STARTAREA
-023200                WA-INVM-INPUT-KEY
-023300                WA-SERVICES-FLAG
-023400                INVM-RECORD-AREA
-023500                WA-OUTPUT
-023600                WA-MSG-ERR-FLAG
-023700                WA-PASSALONG
-023800                UT0200-CALL-PARAMS
-023900                INVH-RECORD-AREA
-024000*               WA-OD-INDICATOR2
-024100*               WA-OD-INDICATOR1
-                       
-024200                LS-400-ACCOUNT-ACTIVE-FLAG.
-024300     
-024400     MOVE ZEROES TO LS-400-OUTPUT-ERROR-NUMBER
-024500     MOVE '003'                 TO STRT-AREA-SOC-NO
-024600     MOVE '000400'              TO STRT-AREA-TRN-NO
-024700     MOVE   01                  TO STRT-AREA-TELLER-LANG
-024800     MOVE  'Y'                  TO STRT-AREA-OK-MSG-CNTL-FLAG.
-024900     
-025000 A001-EXIT.
-025100 EXIT.
-025200
-025300
-025400 A002-FIRST-TIME-READ.
-025500     
-025600     CALL "UTSERV"         USING WA-SERVICES-FLAG
-025700     IF WA-SERVICES-FLAG = "Y" AND WA-FIRST-TIME-FLAG = "Y"
-009300        CALL "DBIO" USING DBIO-CALL-PARAM
-009400                          DBIO-CALL-SYS-AREA
-009500                          DBIO-CALL-KEY-AREA
-009600                          DBIO-CALL-STATUS
-025800        CALL "IN0022" USING STARTAREA
-025900                            WA-PASSALONG
-026000        MOVE "N" TO WA-FIRST-TIME-FLAG
-026100     END-IF.
-026200     
-026300 A002-EXIT.
-026400 EXIT.
-026500 A003-READ-INVM.
-000000        add 1 to WA-COUNT           
-026700     MOVE LS-400-INPUT-ACCOUNT-NUMBER (WA-COUNT)
-026800                                     TO WA-INPUT-KEY1
-026900     MOVE "003"                      TO WA-SOC-NO
-027000     MOVE 01                         TO DBIO-CALL-FUNC.
-027100     MOVE "INV"                      TO DBIO-CALL-SYS-AREA.
-027200     MOVE WA-INVM-INPUT-KEY          TO DBIO-CALL-KEY-AREA.
-027300     MOVE SPACES                     TO DBIO-CALL-STATUS
-027400     CALL "DBIO"                  USING DBIO-CALL-PARAM
-027500                                        DBIO-CALL-SYS-AREA
-027600                                        DBIO-CALL-KEY-AREA
-027700                                        DBIO-CALL-STATUS
-027800                                        INVM-RECORD-AREA
-027900                                        DBIO-CALL-REFER-AREA.
-028000    
-028100     EVALUATE DBIO-CALL-STATUS
-028200         WHEN "****"
-028300             IF INVM-CURR-STATUS NOT = ZEROES
-028400                MOVE 7998         TO WA-OUTPUT-ERR-MSG-NO
-028500                MOVE 1            TO WA-MSG-ERR-FLAG
-028600             END-IF
-028700         WHEN "MRNF"
-028800              MOVE 108            TO WA-OUTPUT-ERR-MSG-NO
-028900              MOVE 1              TO WA-MSG-ERR-FLAG
-029000              SET UT8500CA-NORMAL-DISPLAY TO TRUE
-029100              MOVE UT8500CA-FUNC-NORMAL-DISPLAY
-029200                                  TO UT8500CA-CALL-CODE
-029300              MOVE SPACES         TO UT8500CA-INPUT-MSG
-029400              STRING "JVMAVBL(A003) : ERROR IN INVM READ " WA-INVM-INPUT-KEY
-029500                     DELIMITED BY SIZE INTO UT8500CA-INPUT-MSG
-029600              MOVE "N" TO UT8500CA-RESPONSE-REQD-FLAG
-029700              CALL "UT8500" USING
-029800                               UT8500CA-AREA
-029900         WHEN OTHER
-030000              MOVE 155            TO WA-OUTPUT-ERR-MSG-NO
-030100              MOVE 1              TO WA-MSG-ERR-FLAG
-030200              SET UT8500CA-NORMAL-DISPLAY TO TRUE
-030300              MOVE UT8500CA-FUNC-NORMAL-DISPLAY
-030400                                  TO UT8500CA-CALL-CODE
-030500              MOVE SPACES         TO UT8500CA-INPUT-MSG
-030600              STRING "JVMAVBL(A003) : ERROR IN INVM READ " DBIO-CALL-STATUS
-030700                     DELIMITED BY SIZE INTO UT8500CA-INPUT-MSG
-030800              MOVE "N" TO UT8500CA-RESPONSE-REQD-FLAG
-030900              CALL "UT8500" USING
-031000                               UT8500CA-AREA
-031100     END-EVALUATE.
 
-021600     IF WA-MSG-ERR-FLAG = ZEROES
-021700        PERFORM A004-READ-DEPP           THRU A004-EXIT
-021800     END-IF.
-031200
-031300    
-031400 A003-EXIT.
-031500 EXIT.
-031600
-031700 A004-READ-DEPP.
-031800
-031900     MOVE "003"            TO UT0200-CALL-SOC-NO.
-032000     MOVE INVM-ACCT-TYPE         TO UT0200-CALL-ACCT-TYPE-A.
-032100     MOVE INVM-INT-CAT           TO UT0200-CALL-INT-CAT-A.
-032200     MOVE 0                      TO UT0200-CALL-INDEX.
-032300     MOVE 02                     TO UT0200-CALL-CODE.
-032400     CALL "UT0200"  USING           UT0200-CALL-PARAMS.
-032500    
-032600     IF UT0200-CALL-STATUS NOT  = 0
-032700        MOVE 201  TO WA-OUTPUT-ERR-MSG-NO
-032800        MOVE 1    TO WA-MSG-ERR-FLAG
-032900        SET UT8500CA-NORMAL-DISPLAY TO TRUE
-033000        MOVE UT8500CA-FUNC-NORMAL-DISPLAY
-033100                          TO UT8500CA-CALL-CODE
-033200        MOVE SPACES       TO UT8500CA-INPUT-MSG
-033300        STRING "JVMAVBL(A004) : BAD DEPP READ " DBIO-CALL-STATUS
-033400            DELIMITED BY SIZE INTO UT8500CA-INPUT-MSG
-033500        MOVE "N" TO UT8500CA-RESPONSE-REQD-FLAG
-033600        CALL "UT8500" USING
-033700                         UT8500CA-AREA
-033800     END-IF.
-021900     IF WA-MSG-ERR-FLAG = ZEROES
-022000        PERFORM A005-CALL-IN0022         THRU A005-EXIT
-022100     END-IF.
-033900    
-034000 A004-EXIT.
-034100 EXIT.
-034200
-034300 A005-CALL-IN0022.
-034400     MOVE LS-400-INPUT-ACCOUNT-NUMBER
-034500                               TO WA-INPUT-KEY
-034600     MOVE LS-400-INP-ENQ-TYPE  TO IN0001-SH-ENQ-TYPE
-034700     CALL "IN0022" USING STARTAREA
-034800                         WA-PASSALONG
-034900                         ACCT-PARM
-035000                         INVH-RECORD-AREA
-000000   
-022200     PERFORM A006-SEND-RESPONSE          THRU A006-EXIT 
-035100     .
-035200 A005-EXIT.
-035300 EXIT.
-035400
-035500 A006-SEND-RESPONSE.
-035600
-035700     IF WA-OUTPUT-ERR-MSG-NO = 998
-035800         MOVE ZEROS TO WA-OUTPUT-ERR-MSG-NO
-035900     END-IF
-036000        
-036100     IF WA-OUTPUT-ERR-MSG-NO = ZEROS AND WA-MSG-ERR-FLAG = ZEROES
-036200        MOVE "9"              TO STRT-AREA-OK-MSG-CNTL-FLAG
-036300        CALL "JVMFT01"     USING STARTAREA
-036400        MOVE WA-OUTPUT-MSG         TO IN0010-DATA-FORMAT
-036500        MOVE IN0010-CUS-ACC-NO     TO WA-ACCT-NO
-036600        MOVE IN0010-AVAIL-BAL      TO WA-AVAIL-BAL
-036700        MOVE IN0010-UNCL-VAL       TO WA-UNCLEAR-FUNDS
-036800        MOVE IN0022-400-HOLD-VALUE TO WA-LIEN-AMOUNT
-036900        MOVE IN0010-SWEEP-BALANCE  TO WA-MOD-BALANCE
-037000        
-037100        IF ((ACCT-PARM-OD-INDICATOR = 'Y') AND (ACCT-PARM-ACCT-DESC = 'Q')
-037200             AND (ACCT-PARM-TYPE > '5999')) 
-037300            MOVE 'Y' TO WA-OD-INDICATOR
-037400        ELSE
-037500            MOVE 'N' TO WA-OD-INDICATOR
-037600        END-IF      
-039500        MOVE WA-OUTPUT            TO JVM-WA-OUTPUT-OUTPUT (WA-COUNT)
-039600     ELSE
-039700        MOVE WA-OUTPUT-ERR-MSG-NO TO LS-400-OUTPUT-ERROR-NUMBER
-039800     END-IF.
-039900    
-040000 A006-EXIT.
-040100 EXIT.
-040200
-040300
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.sql.DataSource;
+
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400InpEnqType;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400OutputErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.JvmArrayOutputOut;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400AccountActiveFlag;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.LsRecordArea;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.WaArrayAccount;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.WaInputCount;
+import com.tcs.bancs.microservices.repository.day.InvmDetailDayRepo;
+
+@RestController
+public class BalanceEnqService_Child {
+
+    @Autowired
+    InvmDetailDayRepo invmRepo;
+
+    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+
+    private static RunUnit sharedRunUnit1;
+    private static JVMAVBL sharedJvmmre1;
+
+    static {
+        try {
+            sharedRunUnit1 = new RunUnit();
+            sharedJvmmre1 = new JVMAVBL();
+            sharedRunUnit1.Add(sharedJvmmre1);
+            System.out.println("Shared RunUnit1 initialized.");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String> Balance_Enquiry_Child(List<List<String>> accountNumbers, int requestedNumberOfRecords, String lacctno1, DataSource datasource, String inpcommonarea, String refno) throws Exception {
+
+    	    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+    	    logger.info("VC------------------------Balance_Enquiry_Child started------------------------VC" + refno);
+
+    	    String lacctno = lacctno1.equals("0000000000000000") ? "0000000000000000" : String.format("%016d", new BigInteger(lacctno1));
+    	    String errno = "";
+    	    String outResponse = "";
+    	    String recordcount = String.format("%03d", requestedNumberOfRecords);
+    	    // Flatten the invm structure
+    	    List<String> flatAccounts = new ArrayList<>();
+    	    for (List<String> list : accountNumbers) {
+    	        flatAccounts.addAll(list);
+    	    }
+
+    	    // Apply lacctno logic: skip all accounts up to and including lacctno
+    	    if (!lacctno.equals("0000000000000000")) {
+    	        int index = -1;
+    	        for (int i = 0; i < flatAccounts.size(); i++) {
+    	            if (String.format("%016d", new BigInteger(flatAccounts.get(i))).equals(lacctno)) {
+    	                index = i;
+    	                break;
+    	            }
+    	        }
+    	        if (index != -1) {
+    	            flatAccounts = flatAccounts.subList(index + 1, flatAccounts.size());
+    	            logger.info("Target account number found. Processing records below it");
+    	        } else {
+    	            logger.info("Target account number not found in the list.");
+    	            return List.of("", "0", "0108"); // Error: account not found
+    	        }
+    	    }
+
+    	    // Format account numbers to 16-digit strings and combine
+    	    StringBuilder accNumbersBuilder = new StringBuilder();
+    	    for (String acc : flatAccounts) {
+    	        accNumbersBuilder.append(String.format("%016d", new BigInteger(acc)));
+    	    }
+
+    	    // Set up COBOL input/output structures
+    	    WaArrayAccount input1 = new WaArrayAccount();
+    	    Ls400InpEnqType input2 = new Ls400InpEnqType();
+    	    WaInputCount input3 = new WaInputCount();
+    	    Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+    	    Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+    	    JvmArrayOutputOut output3 = new JvmArrayOutputOut();
+    	    LsRecordArea inputrec = new LsRecordArea();
+
+    	    input1.setWaArrayAccount(accNumbersBuilder.toString());
+    	    input2.setLs400InpEnqType("1");
+    	    input3.setWaInputCount(recordcount);
+    	    inputrec.setLsRecordArea(inpcommonarea);
+
+    	    int fetchedRecordsCount = 0;
+    	    StringBuilder allRecordsBuilder = new StringBuilder();
+
+    	    try (Connection connection = datasource.getConnection()) {
+    	        sharedRunUnit1.Call("JVMAVBL", input1.get_Reference(), input3.get_Reference(), input2.get_Reference(),
+    	        		output1.get_Reference(), output2.get_Reference(),
+    	                output3.get_Reference(), inputrec.get_Reference(), connection);
+
+    	        errno = output1.getLs400OutputErrorNumber();
+    	        outResponse = output3.getJvmArrayOutputOut();
+
+    	        if ("0000".equals(errno)) {
+    	            if (outResponse != null && !outResponse.trim().isEmpty()) {
+    	                allRecordsBuilder.append(outResponse.trim());
+    	                fetchedRecordsCount++; // Optional: increment if parsing multiple records
+    	            }
+    	        } else if ("155".equals(errno) || "0155".equals(errno)) {
+    	            errno = "0155";
+    	        } else {
+    	            errno = "0000"; // Ignore error and return empty
+    	            logger.info("RECORD NOT FOUND IN INVM");
+    	        }
+
+    	    } catch (SQLException e) {
+    	        logger.error("SQL Exception: " + e.getMessage(), e);
+    	        errno = "3293";
+    	    }
+
+    	    if (fetchedRecordsCount == 0) {
+    	        errno = "0188";
+    	    }
+
+    	    List<String> res = new ArrayList<>();
+    	    res.add(allRecordsBuilder.toString());
+    	    res.add(String.valueOf(fetchedRecordsCount));
+    	    res.add(errno);
+
+    	    logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + refno);
+
+    	    return res;
+    	}
+
+    public class ResponseData {
+        String outResponse;
+        String errno;
+    }
+}
