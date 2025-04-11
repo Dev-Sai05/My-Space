@@ -1,0 +1,274 @@
+
+1.  PURPOSE : The archival of "Deduped" CIFs to be done after 5 years from the date of deduplication.
+
+
+        export TODAY_DT=`cat $data/file/MFLAGS | cut -c9-16`
+
+
+        rm -f $sysout/PROC_INSERT_1_*
+        rm -f $spool/ARCH_AD_*
+        rm -f $data/file/streams_count
+
+        >$sysout/PROC_INSERT_1_${TODAY_DT}.log
+
+        #############DATE#############################
+
+                var_table=`sqlplus -s / <<EOF
+                                set veri off
+                                select EXTRACT(YEAR FROM CURRENT_DATE) AS year FROM DUAL;
+                                exit;
+                                EOF`
+                export var1=`echo "$var_table" |awk  'NR==4''{print $1}' `
+
+                                if [ ! -s $card/DEDUPED_ARCHIVAL_PERIOD.card ];
+                                then
+                                                        if [ $AUTOSYS_MODE = Y ]
+                                                        then
+                                                                echo "ATTENTION ! CANNOT FIND CARD FILE ..."
+                                                                echo "ABORTING PROCESSING.... "
+                                                                exit 1
+                                                        else
+                                                                echo "ATTENTION ! CANNOT FIND CARD FILE ..."
+                                                                exit 1
+                                                        fi
+                                fi
+
+
+
+                while  read -r line
+                do
+                                export yyyy=$(expr $var1 - $line)
+
+                done < "$card/DEDUPED_ARCHIVAL_PERIOD.card"
+
+                current_date=$(date +"$yyyy%m%d")
+                echo "$current_date"
+
+
+                        var_table=`sqlplus -s / <<EOF
+                                        set veri off
+                                        select to_char(to_date($current_date,'YYYYMMDD'),'J')-2415020 "BINARY DATE" from dual;
+                                        exit;
+                                        EOF`
+                        export yyyy1=`echo "$var_table" |awk  'NR==4''{print $1}' `
+
+
+        ###############################
+                rm -f $spool/DEDUP_AD_*
+                >$spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt
+                chmod 755 $spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt
+
+                                DB_QUERY_VAR(){
+                                                                        vare1=`sqlplus -s / <<EOF
+                                                                        set veri off
+                                                                        set feedback off
+                                                                        set head off
+                                                                        set pages 0
+                                                                        spool $spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt
+                                                                        $@;
+                                                                        spool off;
+                                                                        exit;
+                                                                        EOF`
+                                                                }
+
+                        DB_QUERY_VAR "select /*+parallel (cusm,4) */ distinct (CUST_ACCT_NO) from cusm where SOC_NO='003' and  CUSTOMER_STATUS='666' and CUST_ACCT_NO in (select /*+parallel (cidu, 4) */distinct (FROM_CIF) from cidu where
+SOC_NO='003' and DDUP_STATUS='09' and PROCESS_DATE <= '$yyyy1')"
+
+
+                                file_size=$( wc -c < "$spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt")
+
+                                                        if  [[ $file_size -eq 0 ]];then
+
+                                                                                if [ $AUTOSYS_MODE = Y ]
+                                                                                then
+                                                                                                echo "NO MATCHED DATA  FOUND IN TABLE !! " >>$sysout/PROC_INSERT_1_${TODAY_DT}.log
+                                                                                                        exit 1
+                                                                                else
+                                                                                                echo "NO MATCHED DATA  FOUND IN TABLE !! "  >> $sysout/zerobyte.log
+                                                                                                                        exit 1
+                                                                                fi
+                                        fi
+                                        echo "The File Size is "$file_size"  ....!!!! " >>$sysout/PROC_INSERT_1_${TODAY_DT}.log
+
+
+
+        ############################stream generation##############
+
+        count=`wc -l $spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt | cut -d" " -f1`
+        count1=$(expr $count / '10')
+        no_of_output_files=`ll -lrt $spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt |wc -l`
+        > $data/file/streams_count
+                                                cd $spool
+
+                                if [ $no_of_output_files -eq '1' ]; then
+
+                                        if [ $count  -ge 10000 ]
+                                           then
+
+                                                split -l $(expr $count / 30) $spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt |awk 'NF'
+                                                        j=000
+                                                        typeset -Z3 j
+                                                        for i in `ls $spool/x?? `
+                                                         do
+                                                          j=`expr $j + 1`
+                                                          mv -f $i $spool/ARCH_AD_$j > $data/file/streams_count
+                                                        done
+                                        else
+                                                split -l $count1  $spool/DEDUP_AD_${TODAY_DT}_OUTPUT.txt |awk 'NF'
+                                                 j=000
+                                                 typeset -Z3 j
+                                                 for i in `ls $spool/x?? `
+                                                  do
+                                                  j=`expr $j + 1`
+                                                  mv -f $i $spool/ARCH_AD_$j > $data/file/streams_count
+                                                done
+                                        fi
+
+                                fi
+
+        ll -lrt $spool/ARCH_AD_??? | wc -l > $data/file/streams_count
+
+
+
+        ################################################
+
+                        echo "INSERTING OF DATA INTO TEMPORARY TABLE " >>$sysout/PROC_BKP_1_${TODAY_DT}.log
+                        a=001
+                        b=`cat $data/file/streams_count`
+                                typeset -Z3 b
+                        while [ $a -le $b ]
+                        do
+                                        $sh/deduparchivai_2280.sh ${a} -s 2>&1 &
+                                        a=`expr ${a} + 1`
+                                        typeset -Z3 a
+                        done
+
+						
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++						
+
+2.  PURPOSE :  The archival of "Deduped" CIFs to be done after 5 years from the date of deduplication.
+
+
+
+
+        a=001
+        b=`cat $data/file/streams_count`
+            typeset -Z3 b
+        while [ $a -le $b ]
+         do
+
+        c=001
+
+        cat $spool/ARCH_AD_${a} | while read line
+                  do
+
+        DB_QUERY_VAR1()  {
+                                        var_table1=`sqlplus -s / <<EOF
+                                        set veri off
+                                        set feedback off
+                                        set head off
+                                        $@;
+                                        show sqlcode
+                                        exit;
+                                        EOF`
+                                export trun1=`echo "$var_table1" |awk '{print $2}'`
+                                        }
+        DB_QUERY_VAR1 "exec CUSM_MIG_CDFH21('$line')"
+
+        if [ "$trun1"  != 0 ];then
+                if [ $AUTOSYS_MODE = Y ]
+                then
+                        echo "ERROR IN  WHILE BACKUP  THE DATA FROM BACKUP TABLE  !!"  >> $sysout/zerobyte.log
+                                exit 1
+                else
+                        echo "ERROR IN CUSM_MIG_CDFH21 CODE WHILE BACKUP  THE DATA FROM BACKUP TABLE  !!"  >>$sysout/PROC_BKP_1_${TODAY_DT}.log
+                                exit 1
+                fi
+        fi
+
+        done
+
+                                        a=`expr ${a} + 1`
+                                        typeset -Z3 a
+
+
+done						
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++			
+
+3.PURPOSE : The archival of "Deduped" CIFs to be done after 5 years from the date of deduplication.
+
+        echo " DELETING DATA FROM MAIN TABLE " >>$sysout/PROC_BKP_2_${TODAY_DT}.log
+        a=001
+        b=`cat $data/file/streams_count`
+                    typeset -Z3 b
+        while [ $a -le $b ]
+        do
+                $sh/deduparchival3.sh ${a} -s 2>&1 &
+                a=`expr ${a} + 1`
+                typeset -Z3 a
+        done
+				
+						
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++					
+						
+						
+4. INSERT  INTO TABLES 
+ 
+set serveroutput on;
+
+
+create or replace PROCEDURE CIDU_MIG_CUSM1(CUST_ACCT in varchar2) is
+
+
+                        BEGIN
+
+                                insert into hism (select * from cusm  where SOC_NO = '003' and CUST_ACCT_NO = CUST_ACCT);
+
+                                insert into cusvah (select * from cusvaa where INST_NO = '003' AND CUST_NO = CUST_ACCT);
+
+                                insert into  cusvdh (select * from  cusvdd where KEY_1 LIKE '003'||CUST_ACCT || '%');
+
+                                insert into  cusvch (select * from  cusvcc where  KEY_1 LIKE '003'|| CUST_ACCT || '%');
+
+                                insert into  cusveh (select * from  cusvee where KEY_1 LIKE '003'|| CUST_ACCT || '%');
+
+                                commit;
+
+                               EXCEPTION WHEN OTHERS THEN
+                                   dbms_output.put_line('NO DATA FOUND IN ARCH_AD_*** file');
+                                rollback;
+
+                        END;
+                        /
+						
+						
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++						
+
+5. DELETE DATA 
+
+
+CREATE OR REPLACE PROCEDURE CUSM_MIG_CDFH49(CUST_NUM IN VARCHAR2) IS
+CURSOR C29 IS
+
+        select /*+parallel (cidh,4) */ DISTINCT FROM_CIF from cidh where FROM_CIF =  CUST_NUM;
+        BEGIN
+                FOR REC IN C29
+
+                LOOP
+                        EXIT WHEN C29%NOTFOUND;
+
+                        BEGIN
+                                delete from cidu where  cidu.FROM_CIF = rec.FROM_CIF;
+                                COMMIT;
+
+                                  EXCEPTION WHEN OTHERS THEN
+                                  dbms_output.put_line('ERROR OCCURRED WHILE DELETE DATA FOR THIS ACC_NO:- '||rec.FROM_CIF);
+                                rollback;
+                                END;
+                        END LOOP;
+            EXCEPTION WHEN NO_DATA_FOUND THEN
+                dbms_output.put_line('NO DATA FOUND IN  TABLE');
+END;
+/						
+						
