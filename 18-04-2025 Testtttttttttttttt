@@ -1,0 +1,149 @@
+package com.tcs.bancs.microservices.services;
+ 
+ import java.math.BigInteger;
+ import java.sql.Connection;
+ import java.sql.SQLException;
+ import java.util.ArrayList;
+ import java.util.List;
+ 
+ import javax.sql.DataSource;
+ 
+ import org.apache.commons.lang.StringUtils;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ import org.springframework.beans.factory.annotation.Autowired;
+ import org.springframework.web.bind.annotation.RestController;
+ 
+ import com.microfocus.cobol.runtimeservices.RunUnit;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400InpEnqType;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400OutputErrorNumber;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.JvmArrayOutputOut;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.Ls400AccountActiveFlag;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.LsRecordArea;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.WaArrayAccount;
+ import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.WaInputCount;
+ import com.tcs.bancs.microservices.repository.day.InvmDetailDayRepo;
+ 
+ @RestController
+ public class BalanceEnqService_Child {
+ 
+     @Autowired
+     InvmDetailDayRepo invmRepo;
+ 
+     Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+ 
+     private static RunUnit sharedRunUnit1;
+     private static JVMAVBL sharedJvmmre1;
+ 
+     static {
+         try {
+             sharedRunUnit1 = new RunUnit();
+             sharedJvmmre1 = new JVMAVBL();
+             sharedRunUnit1.Add(sharedJvmmre1);
+             System.out.println("Shared RunUnit1 initialized.");
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+     }
+ 
+     public List<String> Balance_Enquiry_Child(List<List<String>> accountNumbers, int requestedNumberOfRecords, String lacctno1, DataSource datasource, String inpcommonarea, String refno) throws Exception {
+ 
+     	    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+     	    logger.info("VC------------------------Balance_Enquiry_Child started------------------------VC" + refno);
+ 
+     	    String lacctno = lacctno1.equals("0000000000000000") ? "0000000000000000" : String.format("%016d", new BigInteger(lacctno1));
+     	    String errno = "";
+     	    String outResponse = "";
+     	    String recordcount = String.format("%03d", requestedNumberOfRecords);
+     	    // Flatten the invm structure
+     	    List<String> flatAccounts = new ArrayList<>();
+     	    for (List<String> list : accountNumbers) {
+     	        flatAccounts.addAll(list);
+     	    }
+ 
+     	    // Apply lacctno logic: skip all accounts up to and including lacctno
+     	    if (!lacctno.equals("0000000000000000")) {
+     	        int index = -1;
+     	        for (int i = 0; i < flatAccounts.size(); i++) {
+     	            if (String.format("%016d", new BigInteger(flatAccounts.get(i))).equals(lacctno)) {
+     	                index = i;
+     	                break;
+     	            }
+     	        }
+     	        if (index != -1) {
+     	            flatAccounts = flatAccounts.subList(index + 1, flatAccounts.size());
+     	            logger.info("Target account number found. Processing records below it");
+     	        } else {
+     	            logger.info("Target account number not found in the list.");
+     	            return List.of("", "0", "0108"); // Error: account not found
+     	        }
+     	    }
+ 
+     	    // Format account numbers to 16-digit strings and combine
+     	    StringBuilder accNumbersBuilder = new StringBuilder();
+     	    for (String acc : flatAccounts) {
+     	        accNumbersBuilder.append(String.format("%016d", new BigInteger(acc)));
+     	    }
+ 
+     	    // Set up COBOL input/output structures
+     	    WaArrayAccount input1 = new WaArrayAccount();
+     	    Ls400InpEnqType input2 = new Ls400InpEnqType();
+     	    WaInputCount input3 = new WaInputCount();
+     	    Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+     	    Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+     	    JvmArrayOutputOut output3 = new JvmArrayOutputOut();
+     	    LsRecordArea inputrec = new LsRecordArea();
+ 
+     	    input1.setWaArrayAccount(accNumbersBuilder.toString());
+     	    input2.setLs400InpEnqType("1");
+     	    input3.setWaInputCount(recordcount);
+     	    inputrec.setLsRecordArea(inpcommonarea);
+ 
+     	    int fetchedRecordsCount = 0;
+     	    StringBuilder allRecordsBuilder = new StringBuilder();
+ 
+     	    try (Connection connection = datasource.getConnection()) {
+     	        sharedRunUnit1.Call("JVMAVBL", input1.get_Reference(), input3.get_Reference(), input2.get_Reference(),
+     	        		output1.get_Reference(), output2.get_Reference(),
+     	                output3.get_Reference(), inputrec.get_Reference(), connection);
+ 
+     	        errno = output1.getLs400OutputErrorNumber();
+     	        outResponse = output3.getJvmArrayOutputOut();
+ 
+     	        if ("0000".equals(errno)) {
+     	            if (outResponse != null && !outResponse.trim().isEmpty()) {
+     	                allRecordsBuilder.append(outResponse.trim());
+     	                fetchedRecordsCount++; // Optional: increment if parsing multiple records
+     	            }
+     	        } else if ("155".equals(errno) || "0155".equals(errno)) {
+     	            errno = "0155";
+     	        } else {
+     	            errno = "0000"; // Ignore error and return empty
+     	            logger.info("RECORD NOT FOUND IN INVM");
+     	        }
+ 
+     	    } catch (SQLException e) {
+     	        logger.error("SQL Exception: " + e.getMessage(), e);
+     	        errno = "3293";
+     	    }
+ 
+     	    if (fetchedRecordsCount == 0) {
+     	        errno = "0188";
+     	    }
+ 
+     	    List<String> res = new ArrayList<>();
+     	    res.add(allRecordsBuilder.toString());
+     	    res.add(String.valueOf(fetchedRecordsCount));
+     	    res.add(errno);
+ 
+     	    logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + refno);
+ 
+     	    return res;
+     	}
+ 
+     public class ResponseData {
+         String outResponse;
+         String errno;
+     }
+ }
