@@ -1,0 +1,145 @@
+Here’s a **detailed, step-by-step explanation** in **simple English** for COBOL screen FA0766 (screens 70765 and 70766), which deals with capturing and updating FATCA/CRS details for pre-existing **personal customers**:
+
+---
+
+## 🧾 **Screen FA0766 Overview:**
+
+- **70765**: Used to prompt and read existing data.
+- **70766**: Used to update FATCA/CRS details.
+- The system allows up to **5 tax residencies**.
+- The **country from the electronic search** is shown as **read-only** and comes from 70765.
+- The **TIN No.** from electronic search is **not mandatory**.
+
+---
+
+## 🔁 **A000-MAIN-PARA Logic (Main Process Start)**
+
+### Initialization:
+- Reset error flags and search flags.
+- Prepare variables to track whether customer records exist.
+
+---
+
+## 🖥️ **When Screen 70765 is Used:**
+
+1. **PERFORM R100-READ-CRSP**  
+   → Reads customer data from the CRSP table.
+
+2. **Check for Errors**  
+   → If error flag is 1, exit immediately.
+
+3. **If CRSP Record Found** (`WS-CRSP-FOUND-FLAG = "Y"`)
+   - Go to **V100-VERIFY-STEP**: 
+     - This step checks the **ICRS table** for records matching the customer.
+     - It loops and reads until it finds data or confirms no more records.
+
+4. **If CRSP Not Found**
+   - Try reading from the **CRCU table** via **R200-READ-CRCU**.
+   - This is like a fallback source for retrieving customer information.
+
+---
+
+## 🖥️ **When Screen 70766 is Used:**
+
+1. **Read CRSP again** (just like 70765).
+2. **If found**, then:
+   - **PERFORM M200-70766-CRSP**:  
+     - Moves values from input screen into the CRSP table structure.
+     - This includes:
+       - Address type
+       - Birth details
+       - Up to 5 Tax Residency countries and their TINs
+
+   - **PERFORM U100-UPDATE-CRSP**:  
+     - Updates CRSP table.
+     - Involves:
+       - Assigning step numbers (like 04/07)
+       - Maker-checker logic
+       - Inserting audit records (CRHH table)
+       - Rewriting CRSP record to database
+       - Triggering UTCUDI for logging changes
+
+3. **If not found**, set error message (282).
+
+---
+
+## 📖 **Detailed Breakdown of Important Modules**
+
+### 🔹 R100-READ-CRSP
+
+- Initializes data areas.
+- Based on the screen number (70765 or 70766), populates the `CRSP` primary key.
+- Calls DB to **READ** CRSP data.
+- If found:
+  - Marks it as found.
+  - Saves a copy of the original data.
+  - For 70765, it checks if `CRSP-STEP` is 07 or 06 — if not, error is shown:  
+    ➤ _"Kindly complete the due diligence first"_
+
+- If not found: Marks CRSP not found.
+
+---
+
+### 🔹 V100-VERIFY-STEP
+
+- Checks ICRS table for related FATCA/CRS records.
+- If found, schedules the 70766 screen for capturing additional details.
+
+---
+
+### 🔹 R200-READ-CRCU
+
+- Builds a key using data from screen 70765.
+- Tries reading from **CRCU** table.
+- If found → fine.
+- If not → shows errors (like code 282).
+
+---
+
+### 🔹 M200-70766-CRSP
+
+- Maps user-entered data into `CRSP` record.
+- Handles up to 5 tax residencies and TINs.
+- If country is not OECD (`RK-OECD ≠ 02`), clears self-certification fields.
+
+---
+
+### 🔹 U100-UPDATE-CRSP
+
+- Sets CRSP step as 04/07 (used for processing stages).
+- Maker-checker logic is performed.
+- Updates the CRSP table using REWRITE.
+- Prepares before/after images for audit logging via `UTCUDICA`.
+- Writes CRMC table (some additional audit or mapping).
+- Calls UTCUDI to commit data to the system.
+
+---
+
+### 🔹 S100-SCHEDULE-70766
+
+- Schedules screen 70766 to be loaded after screen 70765 if needed.
+- Sends control values for next screen execution.
+
+---
+
+### 🔹 F100-CALL-FT0000
+
+- A generic system module used to trigger the next screen transition.
+
+---
+
+## ✅ **What Happens in Summary**
+
+| Step | Action |
+|------|--------|
+| User opens screen 70765 | System tries to fetch customer data |
+| If found | Verifies FATCA/CRS indicators |
+| If not found | Tries alternate source (CRCU) |
+| Screen 70766 | User can enter up to 5 Tax Residencies |
+| Data validated | System rewrites CRSP record |
+| Audit Trail | UTCUDI is called to track changes |
+| If all goes well | Customer FATCA/CRS data updated successfully |
+
+---
+
+Would you also like me to **generate a flowchart** for this process like we did for the previous one?
