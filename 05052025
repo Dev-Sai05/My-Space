@@ -486,4 +486,75 @@ NNNNNN************************END OF IR 24120051********************************
 040000 A006-EXIT.
 040100 EXIT.
 040200
+
 040300
+
+
+
+
+       CLASS-ID. JVMAVBL
+           INHERITS OBJECT.
+
+       ENVIRONMENT DIVISION.
+       CONFIGURATION SECTION.
+       SOURCE-COMPUTER. VAX.
+       OBJECT-COMPUTER. VAX.
+       SPECIAL-NAMES.
+           CONSOLE IS CONS.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+
+       01 WA-SERVICES-FLAG                  PIC X(01).
+       01 WA-FIRST-TIME-FLAG                PIC X(01) VALUE "Y".
+       01 WA-INVM-INPUT-KEY.
+           03 WA-SOC-NO                     PIC X(03).
+           03 WA-INPUT-KEY1                 PIC X(16).
+
+       01 WA-OUTPUT.
+           03 WA-ACCT-NO                    PIC X(20).
+           03 WA-AVAIL-BAL                  PIC X(19).
+           03 WA-UNCLEAR-FUNDS              PIC X(19).
+           03 WA-LIEN-AMOUNT                PIC X(19).
+           03 WA-MOD-BALANCE                PIC X(19).
+           03 WA-OD-INDICATOR               PIC X(01).
+
+       01 STARTAREA.
+           COPY STRTAREA IN LIBRYMIS.
+
+           03 WA-INPUT-MESSAGE.
+               05 WA-INPUT-KEY.
+                   07 WA-INPUT-ACCT-NO      PIC 9(16).
+               05 IN0001-SH-ENQ-TYPE        PIC X.
+               05 FILLER                    PIC X(965).
+               05 FILLER                    PIC X(5018).
+
+           02 WA-OUTPUT-MESSAGE.
+               03 WA-OUTPUT-ERR-MSG-NO      PIC 9999.
+               03 WA-OUTPUT-MSG-LENGTH      PIC 9999.
+               03 WA-OUTPUT-MSG.
+                   COPY OUTPUTMSG IN LIBRYMIS.
+
+               03 IN0010-DATA-FORMAT REDEFINES WA-OUTPUT-MSG.
+                   05 IN0010-CUS-ACC-NO     PIC X(20).
+                   05 IN0010-CURRENCY       PIC XXX.
+                   ... (REMAINING FIELDS OMITTED FOR BREVITY)
+
+       PROCEDURE DIVISION.
+
+       METHOD-ID. NEW.
+       * Constructor
+       PROCEDURE DIVISION.
+           DISPLAY "JVMAVBL Object Created".
+           GOBACK.
+       END METHOD NEW.
+
+       METHOD-ID. EXECUTE.
+       PROCEDURE DIVISION.
+           DISPLAY "Execution Logic Goes Here".
+           *> Place logic from original PROCEDURE here
+           GOBACK.
+       END METHOD EXECUTE.
+
+       END CLASS JVMAVBL.
+
