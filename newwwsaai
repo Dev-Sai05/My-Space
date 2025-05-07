@@ -144,3 +144,161 @@ public class BalanceEnqService_Child {
         String errno;
     }
 }
+
+-------- batch
+
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+import javax.sql.DataSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.*;
+
+import com.tcs.bancs.microservices.repository.day.InvmDetailDayRepo;
+
+@RestController
+public class BalanceEnqService_Child {
+
+    @Autowired
+    InvmDetailDayRepo invmRepo;
+
+    private static final Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+
+    private static final int BATCH_SIZE = 50; // Tune this based on COBOL capacity
+    private static final int THREAD_POOL_SIZE = 4;
+
+    private final ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+
+    public List<String> Balance_Enquiry_Child(List<List<String>> accountNumbers, int requestedNumberOfRecords,
+                                              String lacctno1, DataSource datasource, String inpcommonarea,
+                                              String refno) throws Exception {
+
+        MDC.put("refno", refno);
+        logger.info("VC--- Balance_Enquiry_Child started ---");
+
+        String lacctno = lacctno1.equals("0000000000000000") ? "0000000000000000" :
+                String.format("%016d", new BigInteger(lacctno1));
+
+        // Flatten account list and format to 16-digit
+        List<String> flatAccounts = accountNumbers.stream()
+                .flatMap(List::stream)
+                .map(acc -> String.format("%016d", new BigInteger(acc)))
+                .collect(Collectors.toList());
+
+        // Apply lacctno filter
+        if (!"0000000000000000".equals(lacctno)) {
+            int index = flatAccounts.indexOf(lacctno);
+            if (index != -1 && index + 1 < flatAccounts.size()) {
+                flatAccounts = flatAccounts.subList(index + 1, flatAccounts.size());
+                logger.info("Target account number found. Processing records below it");
+            } else {
+                logger.info("Target account number not found in the list.");
+                MDC.clear();
+                return List.of("", "0", "0108");
+            }
+        }
+
+        // Partition account list into batches
+        List<List<String>> batches = new ArrayList<>();
+        for (int i = 0; i < flatAccounts.size(); i += BATCH_SIZE) {
+            int end = Math.min(flatAccounts.size(), i + BATCH_SIZE);
+            batches.add(flatAccounts.subList(i, end));
+        }
+
+        List<CompletableFuture<List<String>>> futures = new ArrayList<>();
+        for (List<String> batch : batches) {
+            futures.add(CompletableFuture.supplyAsync(() -> callCobolForBatch(batch, datasource, inpcommonarea), executor));
+        }
+
+        List<String> allResponses = new ArrayList<>();
+        String finalError = "0000";
+
+        for (CompletableFuture<List<String>> future : futures) {
+            try {
+                List<String> res = future.get(5, TimeUnit.SECONDS);
+                if (!res.get(0).isBlank()) {
+                    allResponses.add(res.get(0));
+                }
+                if (!"0000".equals(res.get(2))) {
+                    finalError = res.get(2);
+                }
+            } catch (TimeoutException e) {
+                logger.error("Timeout in COBOL call for a batch", e);
+                finalError = "3299";
+            } catch (Exception e) {
+                logger.error("Error in batch execution", e);
+                finalError = "3298";
+            }
+        }
+
+        String joinedOutput = String.join("|", allResponses); // Or use any delimiter or merge logic
+        String totalCount = String.valueOf(allResponses.size());
+
+        logger.info("VC--- Balance_Enquiry_Child ended ---");
+        MDC.clear();
+
+        return List.of(joinedOutput, totalCount, finalError);
+    }
+
+    private List<String> callCobolForBatch(List<String> accounts, DataSource datasource, String inpcommonarea) {
+        String recordcount = String.format("%03d", accounts.size());
+
+        WaArrayAccount input1 = new WaArrayAccount();
+        Ls400InpEnqType input2 = new Ls400InpEnqType();
+        WaInputCount input3 = new WaInputCount();
+        Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+        Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+        JvmArrayOutputOut output3 = new JvmArrayOutputOut();
+        LsRecordArea inputrec = new LsRecordArea();
+
+        input1.setWaArrayAccount(String.join("", accounts));
+        input2.setLs400InpEnqType("1");
+        input3.setWaInputCount(recordcount);
+        inputrec.setLsRecordArea(inpcommonarea);
+
+        String outResponse = "";
+        String errno = "0000";
+
+        try (Connection connection = datasource.getConnection()) {
+            RunUnit runUnit = new RunUnit();
+            JVMAVBL cobol = new JVMAVBL();
+            runUnit.Add(cobol);
+
+            runUnit.Call("JVMAVBL",
+                    input1.get_Reference(), input3.get_Reference(), input2.get_Reference(),
+                    output1.get_Reference(), output2.get_Reference(),
+                    output3.get_Reference(), inputrec.get_Reference(), connection);
+
+            errno = output1.getLs400OutputErrorNumber();
+            outResponse = output3.getJvmArrayOutputOut();
+
+            if (!"0000".equals(errno)) {
+                logger.warn("COBOL returned error code: {}", errno);
+            }
+
+        } catch (SQLException e) {
+            logger.error("SQL Exception in batch: {}", e.getMessage(), e);
+            errno = "3293";
+        }
+
+        return List.of(outResponse, String.valueOf(accounts.size()), errno);
+    }
+
+    public class ResponseData {
+        String outResponse;
+        String errno;
+    }
+}
