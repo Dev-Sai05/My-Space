@@ -427,3 +427,155 @@ public List<String> Balance_Enquiry_Child(List<List<String>> accountNumbers, int
 
     return finalOut;
 }
+
+
+-----
+
+public List<String> Balance_Enquiry_Child(List<List<String>> accountNumbers, int requestedNumberOfRecords, String lacctno1, DataSource datasource, String inpcommonarea, String refno) throws Exception {
+
+    Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+    logger.info("VC------------------------Balance_Enquiry_Child started------------------------VC" + refno);
+
+    String lacctno = lacctno1.equals("0000000000000000") ? "0000000000000000" : String.format("%016d", new BigInteger(lacctno1));
+    String errno = "";
+    String outResponse = "";
+    String recordcount = String.format("%03d", requestedNumberOfRecords);
+
+    // Flatten the account list
+    List<String> flatAccounts = new ArrayList<>();
+    for (List<String> list : accountNumbers) {
+        flatAccounts.addAll(list);
+    }
+
+    // Apply lacctno logic: skip all accounts up to and including lacctno
+    if (!lacctno.equals("0000000000000000")) {
+        int index = -1;
+        for (int i = 0; i < flatAccounts.size(); i++) {
+            if (String.format("%016d", new BigInteger(flatAccounts.get(i))).equals(lacctno)) {
+                index = i;
+                break;
+            }
+        }
+        if (index != -1) {
+            flatAccounts = flatAccounts.subList(index + 1, flatAccounts.size());
+            logger.info("Target account number found. Processing records below it");
+        } else {
+            logger.info("Target account number not found in the list.");
+            return List.of("", "0", "0108"); // Error: account not found
+        }
+    }
+
+    // Split accounts into manageable chunks
+    int chunkSize = 10; // You can tune this for performance
+    List<List<String>> chunks = new ArrayList<>();
+    for (int i = 0; i < flatAccounts.size(); i += chunkSize) {
+        chunks.add(flatAccounts.subList(i, Math.min(flatAccounts.size(), i + chunkSize)));
+    }
+
+    // Prepare parallel execution
+    ExecutorService executor = Executors.newFixedThreadPool(Math.min(chunks.size(), 10));
+    List<CompletableFuture<List<String>>> futures = new ArrayList<>();
+
+    for (List<String> chunk : chunks) {
+        CompletableFuture<List<String>> future = CompletableFuture.supplyAsync(() -> {
+            String localErrno = "0000";
+            String localOutResponse = "";
+            RunUnit RunUnit1 = null;
+            try (Connection connection = datasource.getConnection()) {
+                JVMAVBL JVMAVBL = new JVMAVBL();
+                RunUnit1 = new RunUnit();
+                RunUnit1.Add(JVMAVBL);
+
+                StringBuilder localBuilder = new StringBuilder();
+                for (String acc : chunk) {
+                    localBuilder.append(String.format("%016d", new BigInteger(acc)));
+                }
+
+                WaArrayAccount input1 = new WaArrayAccount();
+                input1.setWaArrayAccount(localBuilder.toString());
+
+                Ls400InpEnqType input2 = new Ls400InpEnqType();
+                input2.setLs400InpEnqType("1");
+
+                WaInputCount input3 = new WaInputCount();
+                input3.setWaInputCount(recordcount);
+
+                LsRecordArea inputrec = new LsRecordArea();
+                inputrec.setLsRecordArea(inpcommonarea);
+
+                Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
+                Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
+                JvmArrayOutputOut output3 = new JvmArrayOutputOut();
+
+                RunUnit1.Call("JVMAVBL", input1.get_Reference(), input3.get_Reference(), input2.get_Reference(),
+                        output1.get_Reference(), output2.get_Reference(),
+                        output3.get_Reference(), inputrec.get_Reference(), connection);
+
+                localErrno = output1.getLs400OutputErrorNumber();
+                localOutResponse = output3.getJvmArrayOutputOut();
+                logger.info("OUTResponse::::::::::::::" + localOutResponse);
+
+                if (!"0000".equals(localErrno)) {
+                    if ("155".equals(localErrno) || "0155".equals(localErrno)) {
+                        localErrno = "0155";
+                    } else {
+                        localErrno = "0000";
+                        logger.info("RECORD NOT FOUND IN INVM");
+                    }
+                }
+
+            } catch (SQLException e) {
+                logger.error("SQL Exception: " + e.getMessage(), e);
+                localErrno = "3293";
+            } finally {
+                if (RunUnit1 != null) {
+                    RunUnit1.close();
+                }
+            }
+
+            if (localOutResponse == null || localOutResponse.trim().isEmpty()) {
+                localErrno = "0188";
+            }
+
+            List<String> partialRes = new ArrayList<>();
+            partialRes.add(localOutResponse != null ? localOutResponse.trim() : "");
+            partialRes.add(String.valueOf(chunk.size()));
+            partialRes.add(localErrno);
+            return partialRes;
+
+        }, executor);
+        futures.add(future);
+    }
+
+    // Wait for all and combine results
+    List<String> allResponses = new ArrayList<>();
+    int totalFetched = 0;
+    String finalErrno = "0000";
+
+    for (CompletableFuture<List<String>> future : futures) {
+        List<String> res = future.get();
+        String partialOut = res.get(0);
+        String partialCount = res.get(1);
+        String partialErr = res.get(2);
+
+        if (!partialOut.isEmpty()) {
+            allResponses.add(partialOut);
+        }
+
+        totalFetched += Integer.parseInt(partialCount);
+        if (!partialErr.equals("0000")) {
+            finalErrno = partialErr;
+        }
+    }
+
+    executor.shutdown();
+
+    String combinedOutput = String.join("", allResponses);
+    List<String> finalResult = new ArrayList<>();
+    finalResult.add(combinedOutput);
+    finalResult.add(String.valueOf(totalFetched));
+    finalResult.add(finalErrno);
+
+    logger.info("VC------------------------Balance_Enquiry_Child ended------------------------VC" + refno);
+    return finalResult;
+}
