@@ -1,0 +1,26 @@
+FOR COB :
+
+badgotos.pl -basedir /fns/d0/r/src reportdir /fns/d0/r/sysout/akhil/ -prog /fns/d0/r/src/BR0000.COB (Without IR)
+checkVarInit.pl -if /fns/d0/r/src/BR0000.COB -of /fns/d0/r/sysout/akhil/BR0000.checkVarInit -ir 24100237
+ConditionsCheck.pl -if /fns/d0/r/src/BR0000.COB -of /fns/d0/r/sysout/akhil/BR0000.TXT -ir 24100237
+filehandlechk.pl -if /fns/d0/r/src/BR0000.COB -of /fns/d0/r/sysout/akhil/BR0000.TXT -ir 24100237
+checkPara.pl -if  /fns/d0/r/src/BR0000.COB -of /fns/d0/r/sysout/akhil/BR0000.TXT -ir 24100237
+evalWhenOtherCheck.pl -if /fns/d0/r/src/BR0000.COB -irno 24100237
+chkVarMove.pl -if /fns/d0/r/src/BR0000.COB -of /fns/d0/r/sysout/akhil/BR0000.TXT -ir 24100237
+checkCallParam.pl -if /fns/d0/r/src/BR0000.COB -of /fns/d0/r/sysout/akhil/BR0000.TXT -irno 24100237
+newTAT_chkVarMove.pl -if /fns/d0/r/src/BR0000.COB -of /fns/d0/r/sysout/akhil/BR0000.newTAT -ir 24100237
+StringProgram.pl -if /fns/d0/r/src/BR0000.COB -ir 24100237
+
+FOR PCO :
+
+badgotos.pl -basedir /fns/d0/r/dbora/pco reportdir /fns/d0/r/sysout/akhil/ -prog /fns/d0/r/dbora/pco/BR5471.PCO
+checkVarInit.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -of /fns/d0/r/sysout/akhil/BR5471.TXT -ir 24120197
+ConditionsCheck.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -of /fns/d0/r/sysout/akhil/BR5471.TXT -ir 24120197
+filehandlechk.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -of /fns/d0/r/sysout/akhil/BR5471.TXT -ir 24120197
+checkPara.pl -if  /fns/d0/r/dbora/pco/BR5471.PCO -of /fns/d0/r/sysout/akhil/BR5471.TXT -ir 24120197
+evalWhenOtherCheck.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -irno 24120197
+chkVarMove.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -of /fns/d0/r/sysout/akhil/BR5471.TXT -ir 24120197
+checkCallParam.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -of /fns/d0/r/sysout/akhil/BR5471.TXT
+newTAT_chkVarMove.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -of /fns/d0/r/sysout/akhil/BR5471.TXT_out.err -ir 24120197
+StringProgram.pl -if /fns/d0/r/dbora/pco/BR5471.PCO -ir 24120197
+sql_checker.pl -f /fns/d0/r/dbora/pco/BR5471.PCO -ir 24120197 
