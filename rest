@@ -1,0 +1,16 @@
+package com.analyzer.rest;
+
+import com.analyzer.FileProcessorService;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/analyze")
+public class AnalyzeController {
+
+    @PostMapping
+    public String runAnalysis(@RequestParam String filepath, @RequestParam(required = false) String ir) {
+        FileProcessorService svc = new FileProcessorService();
+        svc.process(filepath, ir);
+        return "Processing started. Check console/output folder.";
+    }
+}
