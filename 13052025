@@ -1,0 +1,95 @@
+package com.analyzer;
+
+import java.io.*;
+import java.util.*;
+
+public class ScriptExecutor {
+
+    private final File inputFile;
+    private final String ir;
+    private final String outputDir;
+
+    // Set this to your Perl executable path
+    private static final String PERL_PATH = "C:\\Strawberry\\perl\\bin\\perl.exe";  // Update as needed
+
+    public ScriptExecutor(File inputFile, String ir, String outputDir) {
+        this.inputFile = inputFile;
+        this.ir = ir;
+        this.outputDir = outputDir;
+    }
+
+    public void runAll(boolean isCob) {
+        System.out.println("Running analysis for: " + inputFile.getAbsolutePath());
+        String[][] commands = isCob ? cobCommands() : pcoCommands();
+
+        for (String[] command : commands) {
+            try {
+                runCommand(command);
+            } catch (IOException | InterruptedException e) {
+                System.err.println("Failed to run: " + Arrays.toString(command));
+                System.err.println("Error: " + e.getMessage());
+            }
+        }
+
+        System.out.println("All analysis scripts completed.");
+    }
+
+    private void runCommand(String[] commandArgs) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>();
+        command.add(PERL_PATH);  // Use absolute path
+        command.addAll(Arrays.asList(commandArgs));
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println("[Perl] " + line);
+            }
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            System.err.println("Command exited with code " + exitCode + ": " + String.join(" ", command));
+        }
+    }
+
+    private String[][] cobCommands() {
+        String fn = inputFile.getName();
+        String in = inputFile.getAbsolutePath();
+
+        return new String[][] {
+            new String[]{"scripts/badgotos.pl", "-basedir", inputFile.getParent(), "-reportdir", outputDir, "-prog", in},
+            new String[]{"scripts/checkVarInit.pl", "-if", in, "-of", outputDir + "/" + fn + ".checkVarInit", "-ir", ir},
+            new String[]{"scripts/ConditionsCheck.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/filehandlechk.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/checkPara.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/evalWhenOtherCheck.pl", "-if", in, "-irno", ir},
+            new String[]{"scripts/chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/checkCallParam.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-irno", ir},
+            new String[]{"scripts/newTAT_chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".newTAT", "-ir", ir},
+            new String[]{"scripts/StringProgram.pl", "-if", in, "-ir", ir}
+        };
+    }
+
+    private String[][] pcoCommands() {
+        String fn = inputFile.getName();
+        String in = inputFile.getAbsolutePath();
+
+        return new String[][] {
+            new String[]{"scripts/badgotos.pl", "-basedir", inputFile.getParent(), "-reportdir", outputDir, "-prog", in},
+            new String[]{"scripts/checkVarInit.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/ConditionsCheck.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/filehandlechk.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/checkPara.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/evalWhenOtherCheck.pl", "-if", in, "-irno", ir},
+            new String[]{"scripts/chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            new String[]{"scripts/checkCallParam.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt"},
+            new String[]{"scripts/newTAT_chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".out.err", "-ir", ir},
+            new String[]{"scripts/StringProgram.pl", "-if", in, "-ir", ir},
+            new String[]{"scripts/sql_checker.pl", "-f", in, "-ir", ir}
+        };
+    }
+}
