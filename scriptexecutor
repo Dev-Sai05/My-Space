@@ -1,0 +1,80 @@
+package com.analyzer;
+
+import java.io.*;
+
+public class ScriptExecutor {
+    private final File inputFile;
+    private final String ir;
+    private final String outputDir;
+
+    public ScriptExecutor(File inputFile, String ir, String outputDir) {
+        this.inputFile = inputFile;
+        this.ir = ir;
+        this.outputDir = outputDir;
+    }
+
+    public void runAll(boolean isCob) {
+        System.out.println("Processing file: " + inputFile.getName());
+        String[][] commands = isCob ? cobCommands() : pcoCommands();
+
+        for (String[] cmd : commands) {
+            try {
+                runCommand(cmd);
+            } catch (Exception ex) {
+                System.err.println("Error: " + ex.getMessage());
+            }
+        }
+
+        System.out.println("All scripts completed. Outputs saved in: " + outputDir);
+    }
+
+    private void runCommand(String[] command) throws IOException, InterruptedException {
+        System.out.println("Executing: " + String.join(" ", command));
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        }
+        p.waitFor();
+    }
+
+    private String[][] cobCommands() {
+        String fn = inputFile.getName();
+        String in = inputFile.getAbsolutePath();
+        return new String[][] {
+            {"perl", "scripts/badgotos.pl", "-basedir", inputFile.getParent(), "reportdir", outputDir, "-prog", in},
+            {"perl", "scripts/checkVarInit.pl", "-if", in, "-of", outputDir + "/" + fn + ".checkVarInit", "-ir", ir},
+            {"perl", "scripts/ConditionsCheck.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/filehandlechk.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/checkPara.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/evalWhenOtherCheck.pl", "-if", in, "-irno", ir},
+            {"perl", "scripts/chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/checkCallParam.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-irno", ir},
+            {"perl", "scripts/newTAT_chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".newTAT", "-ir", ir},
+            {"perl", "scripts/StringProgram.pl", "-if", in, "-ir", ir}
+        };
+    }
+
+    private String[][] pcoCommands() {
+        String fn = inputFile.getName();
+        String in = inputFile.getAbsolutePath();
+        return new String[][] {
+            {"perl", "scripts/badgotos.pl", "-basedir", inputFile.getParent(), "reportdir", outputDir, "-prog", in},
+            {"perl", "scripts/checkVarInit.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/ConditionsCheck.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/filehandlechk.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/checkPara.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/evalWhenOtherCheck.pl", "-if", in, "-irno", ir},
+            {"perl", "scripts/chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt", "-ir", ir},
+            {"perl", "scripts/checkCallParam.pl", "-if", in, "-of", outputDir + "/" + fn + ".txt"},
+            {"perl", "scripts/newTAT_chkVarMove.pl", "-if", in, "-of", outputDir + "/" + fn + ".out.err", "-ir", ir},
+            {"perl", "scripts/StringProgram.pl", "-if", in, "-ir", ir},
+            {"perl", "scripts/sql_checker.pl", "-f", in, "-ir", ir}
+        };
+    }
+}
