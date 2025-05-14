@@ -183,3 +183,98 @@ public class BalanceEnqService_Child {
         return response;
     }
 }
+
+
+------------
+
+
+package com.tcs.bancs.microservices.services;
+
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.sql.DataSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.microfocus.cobol.runtimeservices.RunUnit;
+import com.tcs.bancs.microservices.jvm.balenq.JVMAVBL.LsRecordArea;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUSVCC;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUSVCC.LsAccountNumber;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUSVCC.LsArrayIndex;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUSVCC.LsErrorNumber;
+import com.tcs.bancs.microservices.jvm.balenq.JVMCUSVCC.LsOutputArray;
+
+public class BalanceEnqService_Child {
+
+    private static final Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+
+    public List<String> Balance_Enquiry_Child(String accno, DataSource datasource, String inpcommonarea, String refno) {
+        List<String> response = new ArrayList<>();
+        String errno = "9999";
+        String outputRes = "";
+        int recordCount = 0;
+
+        logger.info("VC--Balance_Enquiry_Child started--VC [{}]", refno);
+
+        try (Connection connection = datasource.getConnection(); RunUnit runUnit = new RunUnit()) {
+
+            JVMCUSVCC jvmcusvcc = new JVMCUSVCC();
+            LsAccountNumber input1 = new LsAccountNumber();
+            LsRecordArea inputRec = new LsRecordArea();
+            LsOutputArray outputArray = new LsOutputArray();
+            LsErrorNumber errorNumber = new LsErrorNumber();
+            LsArrayIndex arrayIndex = new LsArrayIndex();
+
+            input1.setLsAccountNumber(String.format("%017d", new BigInteger(accno)));
+            inputRec.setLsRecordArea(inpcommonarea);
+
+            runUnit.Add(jvmcusvcc);
+            runUnit.Call(
+                "JVMCUSVCC",
+                input1.get_Reference(),
+                errorNumber.get_Reference(),
+                outputArray.get_Reference(),
+                arrayIndex.get_Reference(),
+                inputRec.get_Reference(),
+                connection
+            );
+
+            errno = errorNumber.getLsErrorNumber();
+            recordCount = arrayIndex.getLsArrayIndex();
+            String outResponseArray = outputArray.getLsOutputArray();
+
+            if (outResponseArray != null && !outResponseArray.trim().isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                int startIndex = 0;
+
+                while (startIndex + 98 <= outResponseArray.length()) {
+                    String chunk = outResponseArray.substring(startIndex, startIndex + 98).trim();
+                    if (chunk.isEmpty()) break;
+                    sb.append(chunk);
+                    startIndex += 98;
+                }
+
+                outputRes = sb.toString();
+                errno = "0000";
+            }
+
+        } catch (SQLException e) {
+            logger.error("SQL Exception during Balance Enquiry [{}]: {}", refno, e.getMessage(), e);
+            errno = "3293";
+        } catch (Exception e) {
+            logger.error("Unexpected exception during Balance Enquiry [{}]: {}", refno, e.getMessage(), e);
+        }
+
+        response.add(outputRes);
+        response.add(String.valueOf(Math.max(0, recordCount - 1))); // Safe handling
+        response.add(errno);
+
+        logger.info("VC--Balance_Enquiry_Child ended--VC [{}] with errno [{}]", refno, errno);
+        return response;
+    }
+}
