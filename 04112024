@@ -43,3 +43,52 @@ public ResponseEntity<ResponseBean> balanceEnquiry(@RequestBody RequestBean reqB
         executor.shutdown();
     }
 }
+
+___________
+
+@RestController
+public class MathController {
+
+    @PostMapping("/calculate")
+    public ResponseEntity<?> calculate(@RequestBody Map<String, Integer> input) {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            int a = input.getOrDefault("a", -1);
+            int b = input.getOrDefault("b", -1);
+
+            // Part A: validation
+            CompletableFuture<Void> validationFuture = CompletableFuture.runAsync(() -> {
+                if (a < 0 || b < 0) {
+                    throw new IllegalArgumentException("Inputs must be non-negative");
+                }
+            }, executor);
+
+            // Part B: do addition and subtraction
+            CompletableFuture<Map<String, Integer>> mathFuture = CompletableFuture.supplyAsync(() -> {
+                Map<String, Integer> result = new HashMap<>();
+                result.put("addition", a + b);
+                result.put("subtraction", a - b);
+                return result;
+            }, executor);
+
+            // Combine
+            return validationFuture
+                .thenCompose(ignored -> mathFuture)
+                .thenApply(result -> ResponseEntity.ok(result))
+                .exceptionally(ex -> {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    response.put("error", cause.getMessage());
+                    return ResponseEntity.badRequest().body(response);
+                })
+                .get(); // wait
+
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        } finally {
+            executor.shutdown();
+        }
+    }
+}
