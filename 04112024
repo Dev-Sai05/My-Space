@@ -1,260 +1,45 @@
-public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords, String accountno) {
-    logger.info("Starting Balance Enquiry Child Service...");
+@PostMapping("/Balance_Enq")
+public ResponseEntity<ResponseBean> balanceEnquiry(@RequestBody RequestBean reqBean) {
+    ResponseBean errorResponse = new ResponseBean();
+    ExecutorService executor = Executors.newFixedThreadPool(2);
 
-    // Split the input account number into chunks of 16 digits
-    List<String> accountNumbers = splitIntoChunks(accno, 16);
-    logger.info("Account Numbers to process: " + accountNumbers);
+    try {
+        CompletableFuture<Void> validationFuture = CompletableFuture.runAsync(() -> {
+            validateAccountNum(reqBean.getAccNo());
+            validateBranchNum(reqBean.getBranchNo());
+            validateTeller(reqBean.getTellerId());
+        }, executor);
 
-    if (accountNumbers.isEmpty()) {
-        logger.error("Invalid account number input.");
-        return List.of("No valid account numbers", "0", "ERROR");
-    }
-    
-    int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 30;
-    StringBuilder allRecordsBuilder = new StringBuilder();
-    int fetchedRecordsCount = 0;
+        CompletableFuture<ResponseBean> cobolFuture = CompletableFuture.supplyAsync(() -> {
+            validateSyscMode(reqBean);
+            return callCobolAndFetchData(reqBean);
+        }, executor);
 
-    // If accountNumber is provided, find it and fetch records below it
-    if (accountno != null && !accountno.isEmpty()) {
-        int index = accountNumbers.indexOf(accountno);
-        if (index != -1) {
-            // If accountNumber is found, fetch records below it
-            int endIndex = Math.min(index + numberOfRecordsToFetch + 1, accountNumbers.size());
-            logger.info("Target account number found. Fetching records below it.");
-            List<String> recordsBelowTarget = accountNumbers.subList(index + 1, endIndex);
-
-            // Process the records below the found account number
-            for (String accountNumber : recordsBelowTarget) {
-                if (fetchedRecordsCount >= numberOfRecordsToFetch) {
-                    break; // Stop processing if required number of records is fetched
-                }
-
-                // Create input and output objects for each account number
-                Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
-                Ls400InpEnqType input2 = new Ls400InpEnqType();
-                Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
-                Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
-                Ls400OutputResponse output3 = new Ls400OutputResponse();
-
-                // Set input parameters
-                input1.setLs400InputAccountNumber(accountNumber);
-                input2.setLs400InpEnqType("1");
-
-                // Call the JVMAVBL service
-                jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
-
-                String errno = output1.getLs400OutputErrorNumber();
-                String outResponse = output3.getLs400OutputResponse();
-
-                if ("0000".equals(errno)) {
-                    if (outResponse != null && !outResponse.trim().isEmpty()) {
-                        allRecordsBuilder.append(outResponse.trim());
-                        fetchedRecordsCount++;
-                        logger.info("Record fetched successfully for account: " + accountNumber);
-                    } else {
-                        logger.info("Empty response for account: " + accountNumber);
+        // Wait for validation to complete
+        return validationFuture
+                .handle((result, ex) -> {
+                    if (ex != null) {
+                        // Cancel COBOL task if validation failed
+                        cobolFuture.cancel(true);
+                        throw new CompletionException(ex.getCause());
                     }
-                } else if ("7998".equals(errno)) {
-                    logger.info("Error 7998 encountered for account: " + accountNumber + ". Stopping further processing.");
-                    break;
-                } else {
-                    logger.info("Error encountered for account: " + accountNumber + ", Error No: " + errno);
-                }
-            }
+                    return null;
+                })
+                .thenCompose(ignored -> cobolFuture)
+                .thenApply(ResponseEntity::ok)
+                .exceptionally(ex -> {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    errorResponse.setResponseCode("999");
+                    errorResponse.setResponseMessage("Error: " + cause.getMessage());
+                    return ResponseEntity.badRequest().body(errorResponse);
+                })
+                .get(); // Block until all done
 
-            // Return the fetched records below the given account number
-            List<String> res = new ArrayList<>();
-            res.add(allRecordsBuilder.toString());
-            res.add(String.valueOf(fetchedRecordsCount));
-            res.add(fetchedRecordsCount > 0 ? "0000" : "ERROR"); // Return success only if records are fetched
-            logger.info("Balance Enquiry Child Service completed.");
-            return res;
-        } else {
-            logger.warn("Target account number not found in the output.");
-            // Return error code if account number is not found
-            List<String> errorRes = new ArrayList<>();
-            errorRes.add("");
-            errorRes.add("0");
-            errorRes.add("7998");  // Error code for not found account number
-            return errorRes;
-        }
+    } catch (Exception e) {
+        errorResponse.setResponseCode("999");
+        errorResponse.setResponseMessage("Internal error: " + e.getMessage());
+        return ResponseEntity.internalServerError().body(errorResponse);
+    } finally {
+        executor.shutdown();
     }
-
-    // If no accountNumber is provided, return the requested number of records from the start
-    logger.info("No target account number provided. Returning top records.");
-    for (String accountNumber : accountNumbers) {
-        if (fetchedRecordsCount >= numberOfRecordsToFetch) {
-            break; // Stop processing if required number of records is fetched
-        }
-
-        // Create input and output objects for each account number
-        Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
-        Ls400InpEnqType input2 = new Ls400InpEnqType();
-        Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
-        Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
-        Ls400OutputResponse output3 = new Ls400OutputResponse();
-
-        // Set input parameters
-        input1.setLs400InputAccountNumber(accountNumber);
-        input2.setLs400InpEnqType("1");
-
-        // Call the JVMAVBL service
-        jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
-
-        String errno = output1.getLs400OutputErrorNumber();
-        String outResponse = output3.getLs400OutputResponse();
-
-        if ("0000".equals(errno)) {
-            if (outResponse != null && !outResponse.trim().isEmpty()) {
-                allRecordsBuilder.append(outResponse.trim());
-                fetchedRecordsCount++;
-                logger.info("Record fetched successfully for account: " + accountNumber);
-            } else {
-                logger.info("Empty response for account: " + accountNumber);
-            }
-        } else if ("7998".equals(errno)) {
-            logger.info("Error 7998 encountered for account: " + accountNumber + ". Stopping further processing.");
-            break;
-        } else {
-            logger.info("Error encountered for account: " + accountNumber + ", Error No: " + errno);
-        }
-    }
-
-    // Return the fetched records from the start
-    List<String> res = new ArrayList<>();
-    res.add(allRecordsBuilder.toString());
-    res.add(String.valueOf(fetchedRecordsCount));
-    res.add(fetchedRecordsCount > 0 ? "0000" : "ERROR"); // Return success only if records are fetched
-    logger.info("Balance Enquiry Child Service completed.");
-    return res;
-}
-
-
-
-if (accountno != null && !accountno.isEmpty()) {
-    int index = accountNumbers.indexOf(accountno);
-    if (index != -1) {
-        // Fetch records below the found account number
-        int startIndex = index + 1; // Start below the target account number
-        int endIndex = Math.min(startIndex + numberOfRecordsToFetch, accountNumbers.size());
-        logger.info("Target account number found. Fetching records below it.");
-        accountNumbers = accountNumbers.subList(startIndex, endIndex);
-        logger.info("Records to process below the target account number: " + accountNumbers);
-    } else {
-        logger.warn("Target account number not found in the list.");
-        return new ArrayList<>(); // Return an empty list if target not found
-    }
-} else {
-    // If no account number is provided, return the requested number of records from the start
-    logger.info("No target account number provided. Returning top records.");
-    accountNumbers = accountNumbers.subList(0, Math.min(numberOfRecordsToFetch, accountNumbers.size()));
-    logger.info("Records to process from the start: " + accountNumbers);
-}
-
-
-
-
-----------
-
-
-public List<String> Balance_Enquiry_Child(String accno, int requestedNumberOfRecords, String accountno) {
-    logger.info("Starting Balance Enquiry Child Service...");
-
-    // Split the input account number into chunks of 16 digits
-    List<String> accountNumbers = splitIntoChunks(accno, 16);
-    logger.info("Account Numbers to process: " + accountNumbers);
-
-    if (accountNumbers.isEmpty()) {
-        logger.error("Invalid account number input.");
-        return List.of("No valid account numbers", "0", "ERROR");
-    }
-
-    int numberOfRecordsToFetch = requestedNumberOfRecords > 0 ? requestedNumberOfRecords : 30;
-    StringBuilder allRecordsBuilder = new StringBuilder();
-    int fetchedRecordsCount = 0;
-    boolean targetAccountFound = false;
-
-    // If a target account number is provided, find it
-    if (accountno != null && !accountno.isEmpty()) {
-        int index = accountNumbers.indexOf(accountno);
-        if (index != -1) {
-            targetAccountFound = true;
-            accountNumbers = accountNumbers.subList(index + 1, accountNumbers.size());
-            logger.info("Target account number found. Processing records below it: " + accountNumbers);
-        } else {
-            logger.warn("Target account number not found in the list.");
-            return List.of("Target account number not found", "0", "ERROR");
-        }
-    }
-
-    // Process accounts sequentially
-    for (String accountNumber : accountNumbers) {
-        if (fetchedRecordsCount >= numberOfRecordsToFetch) {
-            break; // Stop processing if required number of records is fetched
-        }
-
-        // Create input and output objects for each account number
-        Ls400InputAccountNumber input1 = new Ls400InputAccountNumber();
-        Ls400InpEnqType input2 = new Ls400InpEnqType();
-        Ls400OutputErrorNumber output1 = new Ls400OutputErrorNumber();
-        Ls400AccountActiveFlag output2 = new Ls400AccountActiveFlag();
-        Ls400OutputResponse output3 = new Ls400OutputResponse();
-
-        // Set input parameters
-        input1.setLs400InputAccountNumber(accountNumber);
-        input2.setLs400InpEnqType("1");
-
-        // Call the JVMAVBL service
-        jvmavbl.JVMAVBL(input1, input2, output1, output2, output3);
-
-        String errno = output1.getLs400OutputErrorNumber();
-        String outResponse = output3.getLs400OutputResponse();
-
-        if ("0000".equals(errno)) {
-            if (outResponse != null && !outResponse.trim().isEmpty()) {
-                allRecordsBuilder.append(outResponse.trim());
-                fetchedRecordsCount++;
-                logger.info("Record fetched successfully for account: " + accountNumber);
-            } else {
-                logger.info("Empty response for account: " + accountNumber);
-            }
-        } else if ("7998".equals(errno)) {
-            logger.info("Error 7998 encountered for account: " + accountNumber + ". Stopping further processing.");
-            break;
-        } else {
-            logger.info("Error encountered for account: " + accountNumber + ", Error No: " + errno);
-        }
-    }
-
-    // If target account was not found and no records fetched
-    if (!targetAccountFound && fetchedRecordsCount == 0) {
-        logger.error("No records found or processed.");
-        return List.of("No records found", "0", "ERROR");
-    }
-
-    // Prepare response
-    List<String> res = new ArrayList<>();
-    res.add(allRecordsBuilder.toString());
-    res.add(String.valueOf(fetchedRecordsCount));
-    res.add(fetchedRecordsCount > 0 ? "0000" : "ERROR"); // Return success only if records are fetched
-
-    logger.info("Balance Enquiry Child Service completed.");
-    return res;
-}
-
-
-
-
-
-private List<String> splitIntoChunks(String input, int chunkSize) {
-    List<String> chunks = new ArrayList<>();
-    for (int i = 0; i < input.length(); i += chunkSize) {
-        int end = Math.min(input.length(), i + chunkSize);
-        String chunk = input.substring(i, end).trim();
-        // Add only non-empty, non-zero chunks
-        if (!chunk.isEmpty() && !chunk.matches("^0+$")) {
-            chunks.add(chunk);
-        }
-    }
-    return chunks;
 }
