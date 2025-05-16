@@ -1,0 +1,260 @@
+
+-------------------------------------------------   PART - A --------------------------------------------------------------------------------
+try {
+	    if(reqbean != null) {
+	    	if(!reqbean.isEmpty()){
+	    		
+    		reqbeanstr = gson.toJson(reqbean).toString();
+    		tellerno   = reqbean.getTellerId();
+    		branchno   = reqbean.getBranchCode();
+    	    refno	    =  reqbean.getReferenceNumber();
+    		logger.info("VC--------REFERENCE_NUMBER----------VC " + refno);
+	        res_file_path=AVBAL_RES_FILE_PATH;
+	        errList = inpref.validateRefNum(refno);
+		    errno = errList.get(1);
+		    refno = errList.get(0);
+		    if(!errno.equals("00000")) {			
+				errDesc = error.getProperty(errno);
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+			}
+		    errList = inptel.validateTellerNum(tellerno);
+		    errno = errList.get(1);
+		    tellerno = errList.get(0);
+			if (!errno.equals("00000")) {
+				errDesc = error.getProperty(errno);
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+			}
+			errList = inpbrh.validateBranchNum(branchno);
+		    errno = errList.get(1);
+		    branchno = errList.get(0);
+			if (!errno.equals("00000")) {
+
+				errDesc = error.getProperty(errno);
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+			}
+
+			cifno = reqbean.getCIFNumber();
+			chkdRes = inpcif.validateCIFNumber(cifno);
+			errno = chkdRes.get(1);
+			if (!errno.equals("00000")) {
+				if (errno.equals("6240")) {
+					errDesc = error.getProperty(errno);
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+				} else {
+					chkderr = errno;
+					validChkdFlag = "N";
+				}
+			} else {
+				cifno = chkdRes.get(0);
+				validChkdFlag = "Y";
+			}
+			
+			lacctno = reqbean.getACCOUNTNumber();
+			acctchkdRes = inpacc.validateAccountNum(lacctno);
+			errno = acctchkdRes.get(1);
+			if (!errno.equals("00000")) {
+				if (errno.equals("0620")) {
+					errDesc = error.getProperty(errno);
+						finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+						migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+				} else {
+					acctchkderr = errno;
+					validacctChkdFlag = "N";
+				}
+			} else {
+				lacctno = acctchkdRes.get(0);
+				validacctChkdFlag = "Y";
+			}
+	
+			if (accept != null && accept.contains("application/json")) {
+				if (validChkdFlag.equals("Y")) {
+					if(validacctChkdFlag.equals("Y")) {
+						
+						logger.info("VC------------------------Teller Branch Validation Started------------------------VC" + refno);
+						ArrayList<Object> queryParamsTlr = new ArrayList<>();
+						ArrayList<Object> queryParamsBrhm = new ArrayList<>();
+						
+						queryParamsTlr.add("003");
+						formattedTeller = StringUtils.leftPad(tellerno, 16, "0");
+						queryParamsTlr.add(formattedTeller);		
+						
+						formattedBranch = "003" + StringUtils.leftPad(branchno, 16, "0");
+						queryParamsBrhm.add(formattedBranch);
+						
+						try {
+							telm = dbProcess.fetchRepositories(null, "TELM", "TelmDetail", "findByTelmDetails", false,true, queryParamsTlr);
+							brhm = dbProcess.fetchRepositories(null, "BRHM", "BrhmDetail", "findByBrhmDetails", false,true, queryParamsBrhm);
+						} catch (Exception e1) {
+							// TODO Auto-generated catch block
+							logger.info("Exception Occured");
+						}
+						if(telm != null && !telm.isEmpty()) {
+							sign_on_flag=telm.get(0).getSIGNON_FLAG();
+							if( sign_on_flag.equals("Y")) {
+								if(brhm != null && !brhm.isEmpty()) {        										
+								else {
+									logger.info("VC--------------INVALID BRANCH NUMBER--------------VC" + refno);
+									errno = "0526";
+									errDesc = error.getProperty(errno);
+									finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+									migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+									return new ResponseEntity(finalResponse, HttpStatus.OK);
+								}
+							}
+							else {
+								logger.info("VC--------------USER NOT SIGNED ON--------------VC" + refno);
+								errno = "0148";
+								errDesc = error.getProperty(errno);
+								finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+								migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+								return new ResponseEntity(finalResponse, HttpStatus.OK);
+							}
+						}
+						else {
+							logger.info("VC--------------INVALID TELLER NUMBER--------------VC" + refno);
+							errno = "0529";
+							errDesc = error.getProperty(errno);
+							finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+							migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+							return new ResponseEntity(finalResponse, HttpStatus.OK);
+						}								
+					
+					}
+						else {
+							try(Connection connection = dataSource.getConnection()) {							 
+							errDesc = errdesc.getCbsErrDesc(acctchkderr, callcode, opt, lsRecArea, connection);
+							} catch(SQLException e) {
+								errno = "3293";
+								errDesc = error.getProperty(errno);
+									finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+									migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+									return new ResponseEntity(finalResponse, HttpStatus.OK);
+					         }
+							finalResponse = errobj.getErrorResponse(acctchkderr, errDesc, refno);
+							migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, acctchkderr, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+							return new ResponseEntity(finalResponse, HttpStatus.OK);
+						}
+					
+					}
+					else {
+						try(Connection connection = dataSource.getConnection()) {	
+						errDesc = errdesc.getCbsErrDesc(chkderr, callcode, opt, lsRecArea, connection);
+						} catch(SQLException e) {
+							errno = "3293";
+							errDesc = error.getProperty(errno);
+								finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+								migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+								return new ResponseEntity(finalResponse, HttpStatus.OK);
+				         }
+						finalResponse = errobj.getErrorResponse(chkderr, errDesc, refno);
+						migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, chkderr, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+						return new ResponseEntity(finalResponse, HttpStatus.OK);
+					}				
+			
+				
+			}
+			else {
+				errno = "0435";
+				errDesc = error.getProperty(errno);
+				finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+				migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+			
+			}
+		}
+			else {
+				errno = "CB422";
+				errDesc = error.getProperty(errno);
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveToLogDB(Base64.getEncoder().encodeToString((" ".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+			}  
+	    }
+
+	    else {
+	    	errno = "CB422";
+			errDesc = error.getProperty(errno);
+				finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+				migDetails.saveToLogDB(Base64.getEncoder().encodeToString((" ".toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+	    }										
+										
+										
+										
+										
+										
+										
+---------------------------------------------------PART - B-----------------------------------------------------------		
+
+								
+										List<Sysc> syscRes = new ArrayList<Sysc>();
+		        							syscRes = syscReponight.findBySyscDetail();
+		        							if (syscRes.get(0).getSyscVariable().substring(10, 11).equals("N")) {
+		        								dataSource = nightDataSource;
+		        								lsRecArea = bancsTraceState.trim() + 'N'+ bancsHost.trim() + fnsSysnum.trim()
+		        								+ ctrlSysnum.trim() + daySysnum.trim() + nightSysnum.trim() + non24hsum.trim() + 'N'
+		        								+ formattedmasterDB1 + formattedmasterDB2 + servicesFlag.trim() + masterDB.trim() + INSPARAM_FLAG.trim() + INSPARAM_VALUE.trim();
+		        								
+		        								logger.info("+++++++++++Data Fetch from Night DB+++++++++++");
+		        							}
+		        							else {
+		        								dataSource = dayDataSource;
+		        								lsRecArea = bancsTraceState.trim() + 'D' + bancsHost.trim() + fnsSysnum.trim()
+		        								+ ctrlSysnum.trim() + daySysnum.trim() + nightSysnum.trim() + non24hsum.trim() + 'D'
+		        								+ formattedmasterDB1 + formattedmasterDB2 + servicesFlag.trim()+ masterDB.trim() + INSPARAM_FLAG.trim() + INSPARAM_VALUE.trim();
+		        								logger.info("+++++++++++Data Fetch from Day DB+++++++++++");
+		        							}
+		        							logger.info(
+		 											"VC------------------------Sysc check ended------------------------VC" + refno);
+		        							 try(Connection connection = dataSource.getConnection())
+		        							    {	
+//		        								 change
+		 								res = balance.Balance_Enquiry_Child(cifno,dataSource, lsRecArea, refno);
+
+								        out_response = res.get(0);
+								        logger.info(refno + "VC------------------------Fetched NO_OF_RECORDS BALANCE----------------VC" + out_response);
+								        noOfRecords = res.get(1);
+								        errno = res.get(2);
+								        logger.info(refno + "VC------------------------Fetched NO_OF_RECORDS BALANCE----------------VC" + noOfRecords);
+								        logger.info(refno + "VC------------------------Fetched ERROR_NUMBER BALANCE----------------VC" + errno);								
+		        							    }
+		        							 catch(SQLException e)
+		        							    {
+		        							    	errno = "3293";
+		        							    	errDesc = error.getProperty(errno);
+		        									finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+		        									migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+		        									return new ResponseEntity(finalResponse, HttpStatus.OK);
+		        							    }
+												if (errno.equals("0000")) {
+			errno = "";
+			finalResponse = responseObj.getResponse(res_file_path, out_response, refno, noOfRecords);
+			migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "0", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "success" );
+	    } else if(errno.equals("3293")) {
+			errDesc = error.getProperty(errno);
+				finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+				migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+				return new ResponseEntity(finalResponse, HttpStatus.OK);
+		}
+	    else {
+			try(Connection connection = dataSource.getConnection()) {
+			errDesc = errdesc.getCbsErrDesc(errno, callcode, opt, lsRecArea, connection);
+			} catch(SQLException e) {
+				errno = "3293";
+				errDesc = error.getProperty(errno);
+					finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+					migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+					return new ResponseEntity(finalResponse, HttpStatus.OK);
+			}
+			finalResponse = errobj.getErrorResponse(errno, errDesc, refno);
+			migDetails.saveToLogDB(Base64.getEncoder().encodeToString((reqbeanstr.toString()).getBytes()), remoteAddress, tellerno, refno, sourceId, entryDate, IPAddress, errno, errDesc, "1", Base64.getEncoder().encodeToString((finalResponse).getBytes()), "failure" );
+		}
