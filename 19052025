@@ -292,3 +292,96 @@ public class BalanceEnqService_Child {
         }
     }
 }
+
+
+++++++++++++
+
+public class BalanceEnqService_Child {
+
+    private static final Logger logger = LoggerFactory.getLogger(BalanceEnqService_Child.class);
+
+    private static final int POOL_SIZE = 4; // Tune based on CPU cores and expected concurrency
+    private static final RunUnit[] sharedRunUnits = new RunUnit[POOL_SIZE];
+    private static final JVMCUSVCC[] cobolPrograms = new JVMCUSVCC[POOL_SIZE];
+    private static final Object[] locks = new Object[POOL_SIZE];
+    private static final AtomicInteger rrCounter = new AtomicInteger(0);
+
+    static {
+        try {
+            for (int i = 0; i < POOL_SIZE; i++) {
+                sharedRunUnits[i] = new RunUnit();
+                cobolPrograms[i] = new JVMCUSVCC();
+                sharedRunUnits[i].Add(cobolPrograms[i]);
+                locks[i] = new Object();
+                System.out.println("Initialized sharedRunUnit[" + i + "]");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String> Balance_Enquiry_Child(String accno, DataSource datasource, String inpcommonarea, String refno) {
+        logger.info("VC--------Balance_Enquiry_Child started--------VC " + refno);
+
+        List<String> result = new ArrayList<>();
+        List<String> records = new ArrayList<>();
+        String errno = "";
+        String rawOutput = "";
+        int recordCount = 0;
+
+        // COBOL structures
+        LsAccountNumber input1 = new LsAccountNumber();
+        LsRecordArea inputrec = new LsRecordArea();
+        LsOutputArray output1 = new LsOutputArray();
+        LsErrorNumber output2 = new LsErrorNumber();
+        LsArrayIndex output3 = new LsArrayIndex();
+
+        input1.setLsAccountNumber(String.format("%017d", new BigInteger(accno)));
+        inputrec.setLsRecordArea(inpcommonarea);
+
+        int slot = rrCounter.getAndIncrement() % POOL_SIZE;
+
+        try (Connection connection = datasource.getConnection()) {
+
+            synchronized (locks[slot]) {
+                sharedRunUnits[slot].Call("JVMCUSVCC",
+                        input1.get_Reference(),
+                        output2.get_Reference(),
+                        output1.get_Reference(),
+                        output3.get_Reference(),
+                        inputrec.get_Reference(),
+                        connection);
+            }
+
+            errno = output2.getLsErrorNumber();
+            rawOutput = output1.getLsOutputArray();
+            recordCount = output3.getLsArrayIndex();
+
+        } catch (SQLException e) {
+            logger.error("SQL Exception: " + e.getMessage(), e);
+            errno = "3293";
+        } catch (Exception e) {
+            logger.error("General Exception: " + e.getMessage(), e);
+            errno = "3299";
+        }
+
+        // Split 98-byte records
+        int start = 0;
+        while (start + 98 <= rawOutput.length()) {
+            String chunk = rawOutput.substring(start, start + 98).trim();
+            if (chunk.isEmpty()) break;
+            records.add(chunk);
+            start += 98;
+        }
+
+        String formattedOutput = String.join("", records);
+        errno = formattedOutput.isEmpty() ? output2.getLsErrorNumber() : "0000";
+
+        result.add(formattedOutput);
+        result.add(String.valueOf(Math.max(0, recordCount - 1)));
+        result.add(errno);
+
+        logger.info("VC--------Balance_Enquiry_Child ended--------VC " + refno);
+        return result;
+    }
+}
