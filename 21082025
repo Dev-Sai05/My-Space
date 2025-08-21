@@ -66,3 +66,37 @@ IDENTIFICATION DIVISION.
            END-IF.
 
            STOP RUN.
+
+
+IDENTIFICATION DIVISION.
+       PROGRAM-ID. TEST-SFTP.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       77 HOST           PIC X(50) VALUE "127.0.0.1".
+       77 PORT           PIC 9(5)   VALUE 22.
+       77 USERNAME       PIC X(30) VALUE "testuser".
+       77 PASSWORD       PIC X(30) VALUE "testpass".
+       77 RESULT         PIC S9(9) COMP-5 VALUE 0.
+
+       PROCEDURE DIVISION.
+       MAIN-LOGIC.
+           DISPLAY "Connecting to SFTP Server..."
+           
+           PERFORM SFTP-CONNECT
+           
+           IF RESULT = 0
+              DISPLAY "✅ Connection successful!"
+           ELSE
+              DISPLAY "❌ Connection failed, code: " RESULT
+           END-IF
+
+           STOP RUN.
+
+       SFTP-CONNECT.
+           * Dummy logic for testing only
+           IF HOST = "127.0.0.1" AND PORT = 22
+              MOVE 0 TO RESULT
+           ELSE
+              MOVE 1 TO RESULT
+           END-IF.
