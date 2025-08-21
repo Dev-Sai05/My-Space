@@ -1,4 +1,4 @@
-1. Your idea title
+k1. Your idea title
 
 👉 AI Code Reviewer & Unit Test Generator
 
@@ -100,3 +100,40 @@ IDENTIFICATION DIVISION.
            ELSE
               MOVE 1 TO RESULT
            END-IF.
+
+
+
+IDENTIFICATION DIVISION.
+       PROGRAM-ID. SFTPCONNECT.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01 HOSTNAME      PIC X(50) VALUE "your.server.com".
+       01 USERNAME      PIC X(30) VALUE "youruser".
+       01 PORT          PIC 9(5)  VALUE 22.
+
+       01 COMMAND       PIC X(200).
+       01 WS-CMD-LEN    PIC 9(4) COMP-5.
+
+       PROCEDURE DIVISION.
+           *> Build SSH command with port
+           STRING "ssh -p "
+                  PORT DELIMITED BY SPACE
+                  " " DELIMITED BY SIZE
+                  USERNAME DELIMITED BY SPACE
+                  "@" DELIMITED BY SIZE
+                  HOSTNAME DELIMITED BY SIZE
+                  INTO COMMAND
+           END-STRING
+
+           DISPLAY "Command = [" COMMAND "]".
+
+           *> Get length of command (JVM COBOL)
+           COMPUTE WS-CMD-LEN = FUNCTION LENGTH(TRIM(COMMAND))
+
+           DISPLAY "Command length = " WS-CMD-LEN.
+
+           *> Run the command
+           CALL "SYSTEM" USING COMMAND
+
+           GOBACK.
