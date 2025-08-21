@@ -1,0 +1,39 @@
+1. Your idea title
+
+👉 AI Code Reviewer & Unit Test Generator
+
+
+---
+
+2. Brief summary of your idea
+
+👉 An AI-powered tool that reviews source code for best practices, performance, and security issues, and automatically generates unit test cases (e.g., JUnit for Java). It reduces manual effort in code reviews and test writing, accelerates development cycles, and improves overall code quality.
+
+
+---
+
+3. Challenges/Business opportunity being addressed
+
+👉 Code reviews and test case writing are time-consuming, inconsistent, and often delayed in large projects. This leads to longer delivery cycles, higher defect leakage, and quality issues. Automating this process with AI improves developer productivity, reduces manual errors, and ensures consistent quality standards across TCS and multiple client domains.
+
+
+---
+
+4. Novelty of the idea / Stand-out factor
+
+👉 Unlike traditional static code analyzers, this solution uses AI/LLMs to provide context-aware, human-like review suggestions and automatically generates relevant unit test cases. It goes beyond syntax checking by offering performance, security, and maintainability recommendations. The integration of code review + test generation in a single solution makes it unique and impactful.
+
+
+---
+
+5. Highlight relevance to Responsible AI principles such as Security, Fairness, Privacy & Legal parameters
+
+👉 *The tool is designed with Responsible AI principles:
+
+Security: Highlights insecure code patterns (e.g., SQL injection, weak encryption).
+
+Fairness: Provides objective, unbiased reviews based on best practices, not individual coding style.
+
+Privacy: No sensitive client data needs to be shared; the model works on code structure and logic.
+
+Legal/Compliance: Supports secure deployment within TCS/private cloud to ensure client data protection.*
