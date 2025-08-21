@@ -37,3 +37,32 @@ Fairness: Provides objective, unbiased reviews based on best practices, not indi
 Privacy: No sensitive client data needs to be shared; the model works on code structure and logic.
 
 Legal/Compliance: Supports secure deployment within TCS/private cloud to ensure client data protection.*
+
+
+
+IDENTIFICATION DIVISION.
+       PROGRAM-ID. TEST-SFTP.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       77 HOST           PIC X(50) VALUE "127.0.0.1".
+       77 PORT           PIC 9(5)   VALUE 22.
+       77 USERNAME       PIC X(30) VALUE "testuser".
+       77 PASSWORD       PIC X(30) VALUE "testpass".
+       77 RESULT         PIC S9(9) COMP-5 VALUE 0.
+
+       PROCEDURE DIVISION.
+       MAIN-LOGIC.
+           DISPLAY "Connecting to SFTP Server..."
+           
+           CALL "sftp_connect"
+                USING HOST, PORT, USERNAME, PASSWORD
+                RETURNING RESULT
+           
+           IF RESULT = 0
+              DISPLAY "✅ Connection successful!"
+           ELSE
+              DISPLAY "❌ Connection failed, code: " RESULT
+           END-IF.
+
+           STOP RUN.
