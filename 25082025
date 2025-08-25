@@ -1,0 +1,36 @@
+System RAM	Recommended -Xms (Initial Heap)	Recommended -Xmx (Max Heap)	Usage Notes
+
+2 GB RAM	128m – 256m	512m – 768m	Keep it light; leave enough for OS. Suitable for very small apps or testing.
+4 GB RAM	256m – 512m	1024m (1 GB)	Good for small apps & IDEs. Don’t go beyond 1 GB heap or OS may swap.
+8 GB RAM	512m – 1024m	2048m (2 GB) – 3072m (3 GB)	Safe for medium apps / Eclipse / Tomcat. Balance with other running services.
+16 GB RAM	1024m (1 GB) – 2048m (2 GB)	4096m (4 GB) – 6144m (6 GB)	Good for large projects, microservices, or heavy IDE usage.
+32 GB RAM	2048m (2 GB) – 4096m (4 GB)	8192m (8 GB) – 12288m (12 GB)	Suitable for enterprise apps, big data jobs, large microservices.
+64 GB RAM	4096m (4 GB) – 8192m (8 GB)	16384m (16 GB) – 24576m (24 GB)	For servers with high concurrency & memory-intensive workloads.
+
+
+
+---
+
+✅ Additional Notes
+
+General Rule: Xms ≤ Xmx. Many production systems set them equal (-Xms4096m -Xmx4096m) to avoid heap resizing.
+
+OS Reservation: Always leave at least 50% RAM free for the OS and other processes.
+
+IDE (Eclipse/IntelliJ): Safe configs:
+
+On 4 GB RAM → -Xms256m -Xmx1024m
+
+On 16 GB RAM → -Xms1024m -Xmx4096m
+
+
+Servers (Tomcat, Spring Boot, etc.):
+
+Small service → -Xms512m -Xmx2048m
+
+Large service → -Xms2g -Xmx6g
+
+
+
+
+---
