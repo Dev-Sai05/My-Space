@@ -41,3 +41,55 @@ Large service → -Xms2g -Xmx6g
 -Dcom.sun.management.jmxremote.port=9090
 -Dcom.sun.management.jmxremote.authenticate=false
 -Dcom.sun.management.jmxremote.ssl=false
+
+
+
+Subject: Request for Support on JVM COBOL and Microservices Development Challenges
+
+Dear [Recipient's Name/Team],
+
+I am reaching out to seek your support and guidance on several challenges we are currently facing during the development and integration of JVM COBOL projects with Java and microservices. Below are the key points where assistance is required:
+
+1. Database Pooling:
+
+Need to establish database pooling directly within the JVM project instead of relying on Java.
+
+Also require methods for connecting to the database in the JVM project without dependency on Java.
+
+
+
+2. Project Compilation and Deployment:
+
+JVM project should seamlessly accept and compile Java code.
+
+While calling native COBOL programs as COBOL projects in Java, the deployment as a runnable JAR in Tomcat is not working as expected.
+
+Automatic generation of .cbl files is not being included when exporting the project as a runnable JAR.
+
+
+
+3. Debugging & Eclipse Issues:
+
+Visual COBOL for Eclipse is crashing in debug perspective; variable values are not showing in debug mode.
+
+Memory leakages and garbage collection issues are observed in microservices built using Visual COBOL for Eclipse.
+
+
+
+4. Native COBOL Compilation:
+
+Native COBOL code compilation is causing multiple problems (e.g., very large Procedure Divisions). Since we don’t have privileges to modify the native COBOL code, we need a solution for handling this.
+
+
+
+5. Runtime Concerns:
+
+Rununit concept is taking significant time to provide service responses.
+
+Shared Rununit gives faster responses but is causing code locks. We need a stable solution for Shared Rununit.
+
+
+
+6. Performance Issues:
+
+Java to JVM COBOL calling is working fine without slowdowns. However, internal calls within JVM COBOL code are creating slowness in API responses, and this requires resolution.
