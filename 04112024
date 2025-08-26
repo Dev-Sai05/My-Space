@@ -1,21 +1,52 @@
-IDENTIFICATION DIVISION.
-       PROGRAM-ID. STRUCTCHECK.
+<CRITERION Name="Paragraphs Without EXIT/STOP/Transfer" Category="" System="False" ErrorCode="MFCA1105" Description="This query identifies paragraphs that do not contain an EXIT statement, STOP statement, or a termination transfer (XFER/TRANS). Every paragraph should contain a termination statement.">
+    <ENTITY Name="PAR"/>
+    <COND Type="and">
+        <REL Name=":Contains" Op="hasno">
+            <ENTITY Name="STAT"/>
+            <ATTR Name=".Kind" Op="=">
+                <ITEM Value="Exit"/>
+            </ATTR>
+        </REL>
+        <REL Name=":Contains" Op="hasno">
+            <ENTITY Name="STOP"/>
+        </REL>
+        <REL Name=":Contains" Op="hasno">
+            <ENTITY Name="PORT" Descendants="False"/>
+            <ATTR Name=".PORTTYPE" Op="=">
+                <ITEM Value="XFER"/>
+                <ITEM Value="TRANS"/>
+            </ATTR>
+        </REL>
+    </COND>
+</CRITERION>
 
-       DATA DIVISION.
-       WORKING-STORAGE SECTION.
-       01  WS-NUM       PIC 9(2) VALUE 5.
 
-       PROCEDURE DIVISION.
-           * ---- Rule 1: IF without END-IF ----
-           IF WS-NUM > 0
-               DISPLAY "Positive number".
-           * (missing END-IF)
-
-           * ---- Rule 2: END-IF without IF ----
-           END-IF.
-
-           * ---- Rule 3: ELSE without matching IF ----
-           ELSE
-               DISPLAY "This ELSE has no IF".
-
-           STOP RUN.
+<CRITERION Name="GO TO Statements Targeting EXIT Paragraphs" Category="" System="False" ErrorCode="MFCA1104" Description="This query is designed to find instances where a GO TO statement branches to a paragraph that contains an EXIT statement, STOP statement, or termination transfer.">
+    <ENTITY Name="GOTO"/>
+    <COND Type="and">
+        <REL Name=".Go to" Op="has">
+            <ENTITY Name="PAR" Descendants="True"/>
+            <COND Type="or">
+                <REL Name=":Contains" Op="has">
+                    <ENTITY Name="STAT"/>
+                    <ATTR Name=".Kind" Op="=">
+                        <ITEM Value="Exit"/>
+                    </ATTR>
+                </REL>
+                <REL Name=":Contains" Op="has">
+                    <ENTITY Name="STOP"/>
+                </REL>
+                <REL Name=":Contains" Op="has">
+                    <ENTITY Name="PORT" Descendants="False"/>
+                    <ATTR Name=".PORTTYPE" Op="=">
+                        <ITEM Value="XFER"/>
+                        <ITEM Value="TRANS"/>
+                    </ATTR>
+                </REL>
+            </COND>
+        </REL>
+        <REL Name=":IsNested" Op="hasno">
+            <ENTITY Name="EXEC" Descendants="False"/>
+        </REL>
+    </COND>
+</CRITERION>
