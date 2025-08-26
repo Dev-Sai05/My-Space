@@ -1,94 +1,21 @@
-@PostMapping("/Balance_Enq")
-public ResponseEntity<ResponseBean> balanceEnquiry(@RequestBody RequestBean reqBean) {
-    ResponseBean errorResponse = new ResponseBean();
-    ExecutorService executor = Executors.newFixedThreadPool(2);
+IDENTIFICATION DIVISION.
+       PROGRAM-ID. STRUCTCHECK.
 
-    try {
-        CompletableFuture<Void> validationFuture = CompletableFuture.runAsync(() -> {
-            validateAccountNum(reqBean.getAccNo());
-            validateBranchNum(reqBean.getBranchNo());
-            validateTeller(reqBean.getTellerId());
-        }, executor);
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01  WS-NUM       PIC 9(2) VALUE 5.
 
-        CompletableFuture<ResponseBean> cobolFuture = CompletableFuture.supplyAsync(() -> {
-            validateSyscMode(reqBean);
-            return callCobolAndFetchData(reqBean);
-        }, executor);
+       PROCEDURE DIVISION.
+           * ---- Rule 1: IF without END-IF ----
+           IF WS-NUM > 0
+               DISPLAY "Positive number".
+           * (missing END-IF)
 
-        // Wait for validation to complete
-        return validationFuture
-                .handle((result, ex) -> {
-                    if (ex != null) {
-                        // Cancel COBOL task if validation failed
-                        cobolFuture.cancel(true);
-                        throw new CompletionException(ex.getCause());
-                    }
-                    return null;
-                })
-                .thenCompose(ignored -> cobolFuture)
-                .thenApply(ResponseEntity::ok)
-                .exceptionally(ex -> {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    errorResponse.setResponseCode("999");
-                    errorResponse.setResponseMessage("Error: " + cause.getMessage());
-                    return ResponseEntity.badRequest().body(errorResponse);
-                })
-                .get(); // Block until all done
+           * ---- Rule 2: END-IF without IF ----
+           END-IF.
 
-    } catch (Exception e) {
-        errorResponse.setResponseCode("999");
-        errorResponse.setResponseMessage("Internal error: " + e.getMessage());
-        return ResponseEntity.internalServerError().body(errorResponse);
-    } finally {
-        executor.shutdown();
-    }
-}
+           * ---- Rule 3: ELSE without matching IF ----
+           ELSE
+               DISPLAY "This ELSE has no IF".
 
-___________
-
-@RestController
-public class MathController {
-
-    @PostMapping("/calculate")
-    public ResponseEntity<?> calculate(@RequestBody Map<String, Integer> input) {
-        ExecutorService executor = Executors.newFixedThreadPool(2);
-        Map<String, Object> response = new HashMap<>();
-
-        try {
-            int a = input.getOrDefault("a", -1);
-            int b = input.getOrDefault("b", -1);
-
-            // Part A: validation
-            CompletableFuture<Void> validationFuture = CompletableFuture.runAsync(() -> {
-                if (a < 0 || b < 0) {
-                    throw new IllegalArgumentException("Inputs must be non-negative");
-                }
-            }, executor);
-
-            // Part B: do addition and subtraction
-            CompletableFuture<Map<String, Integer>> mathFuture = CompletableFuture.supplyAsync(() -> {
-                Map<String, Integer> result = new HashMap<>();
-                result.put("addition", a + b);
-                result.put("subtraction", a - b);
-                return result;
-            }, executor);
-
-            // Combine
-            return validationFuture
-                .thenCompose(ignored -> mathFuture)
-                .thenApply(result -> ResponseEntity.ok(result))
-                .exceptionally(ex -> {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    response.put("error", cause.getMessage());
-                    return ResponseEntity.badRequest().body(response);
-                })
-                .get(); // wait
-
-        } catch (Exception e) {
-            response.put("error", e.getMessage());
-            return ResponseEntity.internalServerError().body(response);
-        } finally {
-            executor.shutdown();
-        }
-    }
-}
+           STOP RUN.
