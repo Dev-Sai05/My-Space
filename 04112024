@@ -94,3 +94,22 @@
         l)  For evaluate statements, when others to be made mandatory
 
       m) For call statements in COBOL, the order,  data type and length of call program using variables should match with Procedure division using variables of called program
+
+
+----------------------------
+
+
+<CRITERION Name="Missing Explicit Scope Delimiters" Category="" System="False" ErrorCode="MFCA1106" Description="This query looks for statements that do not have scope terminators like END-IF .">
+			<ENTITY Name="IF" Descendants="False"/>
+			<ENTITY Name="PERFORM" Descendants="False"/>
+			<ENTITY Name="STAT" Descendants="False"/>
+			<COND Type="and">
+				<ATTR Name=".Kind" Op="=">
+					<ITEM Value="IF"/>
+					<ITEM Value="EVALUATE"/>
+					<ITEM Value="PERFORM_STAT"/>
+					<ITEM Value="SEARCH"/>
+				</ATTR>
+				<ATTR Name=".HasEnd" Op="false"/>
+			</COND>
+		</CRITERION
