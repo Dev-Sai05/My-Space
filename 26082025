@@ -1,0 +1,163 @@
+	<FOLDER Name="COBOL Performance" Category="" System="False" Description="COBOL Performance includes rules to verify the code and determine where more efficient constructs could be used.">
+		<CRITERION Name="Operations with Different Decimal Precision - Conditions" Category="" System="False" ErrorCode="MFCA1101" Description="This query looks for variables within conditions that are numeric but with differing number of decimal places.  This query uses numeric fields with 0, 1, 2, 3, or 4 decimal places and looks for instances where a variable in the same condition does not have the same number of decimal places.  If your application uses fields with greater numbers of decimal places, the query can be easily modified to cover those values. Programming performance guidelines indicate that if operations are performed on operands of different types then one of these operands will be converted by the compiler. You can largely avoid conversions and improve performance by using consistent data types and by giving both operands the same usage and also appropriate PICTURE specifications.">
+			<ENTITY Name="COND" Descendants="False"/>
+			<COND Type="or">
+				<COND Type="and">
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="=">
+									<ITEM Value="0"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="&gt;">
+									<ITEM Value="1"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+				</COND>
+				<COND Type="and">
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="=">
+									<ITEM Value="1"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="&lt;&gt;">
+									<ITEM Value="1"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+				</COND>
+				<COND Type="and">
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="=">
+									<ITEM Value="2"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="&lt;&gt;">
+									<ITEM Value="2"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+				</COND>
+				<COND Type="and">
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="=">
+									<ITEM Value="3"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="&lt;&gt;">
+									<ITEM Value="3"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+				</COND>
+				<COND Type="and">
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="=">
+									<ITEM Value="4"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+					<REL Name=":Child" Op="has">
+						<ENTITY Name="VAR" Descendants="False"/>
+						<REL Name=".Instances" Op="has">
+							<ENTITY Name="DECL" Descendants="False"/>
+							<COND Type="and">
+								<ATTR Name=".Digits" Op="&gt;">
+									<ITEM Value="0"/>
+								</ATTR>
+								<ATTR Name=".Fraction" Op="&lt;&gt;">
+									<ITEM Value="4"/>
+								</ATTR>
+							</COND>
+						</REL>
+					</REL>
+				</COND>
+			</COND>
+		</CRITERION>
+		<CRITERION Name="Find PERFORM THRU Usage" Category="" System="False" ErrorCode="MFCA1119" Description="This rule finds overlapping perform ranges.">
+			<ENTITY Name="PERFORM" Descendants="False"/>
+				<REL Name=".Overlap" Op="has">
+				<ENTITY Name="PAR" Descendants="True"/>
+				</REL>
+		</CRITERION>		
+	</FOLDER>
