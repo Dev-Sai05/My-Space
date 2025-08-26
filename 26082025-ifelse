@@ -32,3 +32,34 @@
     </CRITERION>
 
 </FOLDER>
+--------------------------------------------------------
+
+		<CRITERION Name="GO TO Statements Targeting non-EXIT Paragraphs" Category="" System="False" ErrorCode="MFCA1103" Description="This query is designed to find instances where a GO TO statement branches to a paragraph that is not an exit paragraph, or does not contain any type of program termination.  The result set should also be reviewed for instances of unsuitable backward branching. See the IBM 'Enterprise COBOL for z/OS Programming Guide Version 3 Release 4 SC27-1412-05' for further details.">
+			<ENTITY Name="GOTO"/>
+			<COND Type="and">
+				<REL Name=".Go to" Op="has">
+					<ENTITY Name="PAR" Descendants="True"/>
+					<COND Type="and">
+						<REL Name=":Contains" Op="hasno">
+							<ENTITY Name="STAT"/>
+							<ATTR Name=".Kind" Op="=">
+								<ITEM Value="Exit"/>
+								</ATTR>
+						</REL>
+						<REL Name=":Contains" Op="hasno">
+							<ENTITY Name="STOP"/>
+						</REL>
+						<REL Name=":Contains" Op="hasno">
+							<ENTITY Name="PORT" Descendants="False"/>
+							<ATTR Name=".PORTTYPE" Op="=">
+								<ITEM Value="XFER"/>
+								<ITEM Value="TRANS"/>
+							</ATTR>
+						</REL>
+					</COND>
+				</REL>
+				<REL Name=":IsNested" Op="hasno">
+					<ENTITY Name="EXEC" Descendants="False"/>
+				</REL>
+			</COND>
+		</CRITERION>
