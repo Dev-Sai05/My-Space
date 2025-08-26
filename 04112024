@@ -50,3 +50,33 @@
         </REL>
     </COND>
 </CRITERION>
+
+
+
+1.                  During review of a CR, we wanted code analyzer feature to review code changes done under a specific CR rather than the entire component for following checklists:
+
+1.                  BAD GOTO
+
+        b) EXIT to be written after every para end.
+
+        c) IF should have a corresponding END-IF
+
+        d) UNUSED VARIABLE identification
+
+        e) In case if group initialized is mentioned, eclipse is detecting initialize only for first variable and not the complete group set
+
+        f)  kindly elaborate dead statement error given by eclipse
+
+        g) In case if display statement has any word with .COB extension, the word should be the program name.
+
+        h) Program ID should be same as component name.
+
+1.                   WHERE clause to be a part of the key field of a particular table.
+
+         j) data type and length of the host variable should be same as table variables.
+
+        k) data type and length for both the variable in move statement should be same
+
+        l)  For evaluate statements, when others to be made mandatory
+
+      m) For call statements in COBOL, the order,  data type and length of call program using variables should match with Procedure division using variables of called program
