@@ -1,0 +1,34 @@
+<FOLDER Name="COBOL Structural Checks" Category="" System="False" 
+        Description="Rules to detect COBOL structural issues such as unbalanced IF/END-IF.">
+
+    <!-- Rule 1: IF without END-IF -->
+    <CRITERION Name="Detect IF without END-IF" Category="" System="False" 
+               ErrorCode="MFCA2001" 
+               Description="This rule finds IF statements that do not have a matching END-IF.">
+        <ENTITY Name="IF" Descendants="False"/>
+        <REL Name=".EndIf" Op="not-exists">
+            <ENTITY Name="END-IF" Descendants="False"/>
+        </REL>
+    </CRITERION>
+
+    <!-- Rule 2: END-IF without IF -->
+    <CRITERION Name="Detect END-IF without IF" Category="" System="False" 
+               ErrorCode="MFCA2002" 
+               Description="This rule finds END-IF statements that do not match an IF.">
+        <ENTITY Name="END-IF" Descendants="False"/>
+        <REL Name=".Parent" Op="not-exists">
+            <ENTITY Name="IF" Descendants="False"/>
+        </REL>
+    </CRITERION>
+
+    <!-- Rule 3: ELSE without matching IF -->
+    <CRITERION Name="Detect ELSE without IF" Category="" System="False" 
+               ErrorCode="MFCA2003" 
+               Description="This rule finds ELSE statements not tied to an IF.">
+        <ENTITY Name="ELSE" Descendants="False"/>
+        <REL Name=".Parent" Op="not-exists">
+            <ENTITY Name="IF" Descendants="False"/>
+        </REL>
+    </CRITERION>
+
+</FOLDER>
