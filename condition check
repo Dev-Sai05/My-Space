@@ -1,0 +1,137 @@
+use Data::Dumper ;
+use Getopt::EvaP ;
+use Env;
+use File::Basename;
+
+my $inputfile ;
+my $outputfile ;
+my $irNumber;
+
+@PDT = split /\n/, <<end_of_PDT ;
+PDT
+
+inputfile, if:    string  = \$required
+outputfile, of:   string
+irnumber, irno:   string 
+debug, d:         switch
+
+PDTEND no_file_list
+end_of_PDT
+@MM = split /\n/, <<end_of_MM;
+.inputfile
+          input cobol file
+
+.outputfile
+          output file contain error and ok statments.
+
+.irnumber
+          IR Number for search for specific IR number changes.
+
+.debug
+          debug for print all conditions error and ok.
+
+
+end_of_MM
+
+
+sub main()
+{
+
+    init();
+    if($irNumber eq "ALL"){
+        readFile();
+    }
+    else{
+    generateHash_variables_irspec();
+    }
+}
+
+sub init(){
+
+    &EvaP( \@PDT, \@MM, \%cmdarg );
+    $inputfile  = $cmdarg{'inputfile'} ;
+    $outputfile  = $cmdarg{'outputfile'} ;
+    $irNumber  = $cmdarg{'irnumber'} || "ALL";
+    $debug  = $cmdarg{'debug'} ;
+
+
+    if(!-e $inputfile || !-r $inputfile){
+        print "$inputfile not exists or readable\n";
+        exit;
+    }
+
+    if($outputfile eq ""){
+        my $inpFileName = basename($inputfile);
+        $outputfile = "/tmp/$LOGNAME/$inpFileName\_out.err";
+    }
+
+    chomp($inputfile) if($inputfile);
+    chomp($outputfile) if($outputfile);
+    chomp($irNumber) if($irNumber);
+
+    print "\nInput File : $inputfile\nOutput File : $outputfile\nDebug : $debug\nIr Number : $irNumber\n";
+    open(OUTPUT, '>', "$outputfile") or die $!;
+}
+
+
+
+sub generateHash_variables_irspec(){
+
+    my $var = "";
+    my $datatype = "";
+    my $lineNo = 0;
+  my $IF_cnt = 0;
+  my  $END_IF_cnt=0;
+  my $else = 0;
+  print "-----------------Inside generateHash_variables_irspec----------------\n\n";
+  #    my $cmd = "cat -n $inputfile | awk '/ WORKING-STORAGE/{ f = 1 } f; /^...... LINKAGE SECTION|PROCEDURE DIVISION/{ f = 0 }' | awk '/START OF IR $irNumber|START OF CR $irNumber/{ f = 1 } f; /END OF IR $irNumber|END OF CR $irNumber/{ f = 0 }'";
+    my $startPattern = "START\\s+OF\\s+IR\\s+$irNumber|START\\s+OF\\s+CR\\s+$irNumber|START\\s+OF\\s+$irNumber|START\\s+OF\\s+$irNumber|START\\s+OR\\s+IR\\s+$irNumber";
+    my $endPattern = "END\\s+OF\\s+IR\\s+$irNumber|END\\s+OF\\s+CR\\s+$irNumber|END\\s+OF\\s+$irNumber|END\\s+OF\\s+$irNumber|END\\s+OR\\s+$irNumber|END\\s+OR\\s+IR\\s+$irNumber";
+ 
+    my $cmd = "perl -ne '/$startPattern/i../$endPattern/i and print' $inputfile";
+
+    # print "-----$cmd----\n";
+
+    open(DATA, "$cmd |") or die "Couldn't open command , $!";
+
+      while (my $line = <DATA>) {
+       
+       # print "$line\n";
+      next if ($line =~ /^......\*/ || $line =~ /^\s*$/);
+  
+       # print "$line\n";
+	$IF_cnt++  if ($line =~ m/\s+\IF\s+/);
+       $else++  if ($line =~ m/ELSE/);
+      $END_IF_cnt++ if $line =~ m/END-IF/;
+      }
+      print "The count of 'IF' for this $irNumber IR number : $IF_cnt\n";
+      print "The count of 'END-IF' for this  $irNumber IR number  : $END_IF_cnt\n";
+      print "The count of 'ELSE' for this  $irNumber IR number  : $else\n";
+    close(DATA);
+}
+sub readFile(){
+
+    my $var = "";
+    my $datatype = "";
+    my $lineNo = 0;
+    my $IF_cnt = 0;
+    my  $END_IF_cnt=0;
+    my $else = 0;
+    print "------------without start of IR and end of IR wise-----------\n\n";
+
+    open(DATA, "$inputfile") or die "Couldn't open command , $!";
+    while (my $line = <DATA>) {
+    next if ($line =~ /^......\*/ || $line =~ /^\s*$/);
+
+#        print "$line\n";
+    $IF_cnt++  if ($line =~ m/\s+\IF\s+/);
+    $END_IF_cnt++ if $line =~ m/END-IF/;
+    $else++  if ($line =~ m/ELSE/);
+    }
+      print "The count of 'IF' for this $irNumber IR number : $IF_cnt\n";
+      print "The count of 'END-IF' for this  $irNumber IR number  : $END_IF_cnt\n";
+       print "The count of 'ELSE' for this  $irNumber IR number  : $else\n";
+    close(DATA);      
+      
+}
+main();
