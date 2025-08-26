@@ -1,15 +1,28 @@
-<CRITERION Name="Paragraphs Without EXIT/STOP/Transfer" Category="" System="False" ErrorCode="MFCA1105" Description="This query identifies paragraphs that do not contain an EXIT statement, STOP statement, or a termination transfer (XFER/TRANS). Every paragraph should contain a termination statement.">
+<CRITERION Name="Paragraphs Without EXIT/STOP/Transfer" 
+           Category="COBOL Performance" 
+           System="False" 
+           ErrorCode="MFCA1105" 
+           Description="This query identifies paragraphs that do not contain an EXIT, STOP, GOBACK, or termination transfer (XFER/TRANS).">
+    
     <ENTITY Name="PAR"/>
+
     <COND Type="and">
+        <!-- no EXIT of any kind -->
         <REL Name=":Contains" Op="hasno">
-            <ENTITY Name="STAT"/>
-            <ATTR Name=".Kind" Op="=">
-                <ITEM Value="Exit"/>
-            </ATTR>
+            <ENTITY Name="EXIT"/>
         </REL>
+
+        <!-- no STOP -->
         <REL Name=":Contains" Op="hasno">
             <ENTITY Name="STOP"/>
         </REL>
+
+        <!-- no GOBACK -->
+        <REL Name=":Contains" Op="hasno">
+            <ENTITY Name="GOBACK"/>
+        </REL>
+
+        <!-- no transfer (XFER/TRANS) -->
         <REL Name=":Contains" Op="hasno">
             <ENTITY Name="PORT" Descendants="False"/>
             <ATTR Name=".PORTTYPE" Op="=">
@@ -19,6 +32,7 @@
         </REL>
     </COND>
 </CRITERION>
+
 
 
 <CRITERION Name="GO TO Statements Targeting EXIT Paragraphs" Category="" System="False" ErrorCode="MFCA1104" Description="This query is designed to find instances where a GO TO statement branches to a paragraph that contains an EXIT statement, STOP statement, or termination transfer.">
