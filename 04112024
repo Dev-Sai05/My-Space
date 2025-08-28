@@ -183,3 +183,30 @@ ee<CRITERION Name="Paragraphs Without EXIT/STOP/Transfer"
 
   </COND>
 </CRITERION>
+
+mmmmmmmmmmmmm
+
+<CRITERION Name="Paragraph Without EXIT"
+           Category="COBOL Style"
+           System="False"
+           ErrorCode="MYCA2002"
+           Description="Ensures each paragraph ends with an EXIT statement.">
+
+  <!-- Select all paragraphs -->
+  <ENTITY Name="Paragraph" Descendants="False"/>
+
+  <COND Type="and">
+    <ATTR Name=".Kind" Op="=">
+      <ITEM Value="Paragraph"/>
+    </ATTR>
+
+    <!-- Ensure the last statement is NOT EXIT -->
+    <NOT>
+      <ENTITY Name="Statement" Position="Last">
+        <ATTR Name=".Kind" Op="=">
+          <ITEM Value="EXIT"/>
+        </ATTR>
+      </ENTITY>
+    </NOT>
+  </COND>
+</CRITERION>
