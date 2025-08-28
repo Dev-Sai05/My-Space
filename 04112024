@@ -245,3 +245,46 @@ mmmmmmmmmmmmm
     </NOT>
   </COND>
 </CRITERION>
+
+?????
+
+<CRITERION Name="Paragraph Not Followed By EXIT Stub"
+           Category="COBOL Style"
+           System="False"
+           ErrorCode="MYCA4002"
+           Description="Flags PARs that do not contain an EXIT and are not immediately followed by an EXIT-only PAR.">
+
+  <ENTITY Name="PAR" Descendants="False"/>
+
+  <COND Type="and">
+    <!-- 1) This PAR does not contain an EXIT -->
+    <REL Name=":Contains" Op="hasno">
+      <ENTITY Name="STAT"/>
+      <ATTR Name=".Kind" Op="=">
+        <ITEM Value="Exit"/>
+      </ATTR>
+    </REL>
+
+    <!-- 2) The following PAR is NOT an EXIT-only stub -->
+    <REL Name=":Follows" Op="hasno">
+      <ENTITY Name="PAR" Descendants="False"/>
+
+      <!-- the following paragraph must contain an EXIT -->
+      <COND Type="and">
+        <REL Name=":Contains" Op="has">
+          <ENTITY Name="STAT"/>
+          <ATTR Name=".Kind" Op="=">
+            <ITEM Value="Exit"/>
+          </ATTR>
+        </REL>
+        <!-- and must contain NO other statements besides EXIT -->
+        <REL Name=":Contains" Op="hasno">
+          <ENTITY Name="STAT"/>
+          <ATTR Name=".Kind" Op="!=">
+            <ITEM Value="Exit"/>
+          </ATTR>
+        </REL>
+      </COND>
+    </REL>
+  </COND>
+</CRITERION>
