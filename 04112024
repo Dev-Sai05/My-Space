@@ -210,3 +210,38 @@ mmmmmmmmmmmmm
     </NOT>
   </COND>
 </CRITERION>
+
+((((((
+
+<CRITERION Name="Paragraph Without EXIT"
+           Category="COBOL Style"
+           System="False"
+           ErrorCode="MYCA2002"
+           Description="Ensures each working paragraph has a corresponding EXIT at the end.">
+
+  <!-- Select all PARAGRAPH entities -->
+  <ENTITY Name="Paragraph" Descendants="True"/>
+
+  <COND Type="and">
+    <!-- Must be a normal paragraph (exclude STOP RUN, etc.) -->
+    <ATTR Name=".Kind" Op="=">
+      <ITEM Value="Paragraph"/>
+    </ATTR>
+
+    <!-- Must NOT already be an EXIT paragraph (ignore W399-EXIT, etc.) -->
+    <NOT>
+      <ATTR Name=".Name" Op="like">
+        <ITEM Value="%-EXIT"/>
+      </ATTR>
+    </NOT>
+
+    <!-- Ensure the next paragraph is NOT an EXIT paragraph -->
+    <NOT>
+      <ENTITY Name="NextParagraph">
+        <ATTR Name=".Name" Op="like">
+          <ITEM Value="%-EXIT"/>
+        </ATTR>
+      </ENTITY>
+    </NOT>
+  </COND>
+</CRITERION>
