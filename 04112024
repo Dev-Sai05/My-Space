@@ -113,3 +113,27 @@
 				<ATTR Name=".HasEnd" Op="false"/>
 			</COND>
 		</CRITERION
+
+-------------------------
+
+<CRITERION Name="Paragraph Without EXIT"
+           Category="COBOL Style"
+           System="False"
+           ErrorCode="MYCA2002"
+           Description="Ensures each paragraph ends with an EXIT statement.">
+
+  <!-- Select all PARAGRAPH entities -->
+  <ENTITY Name="Paragraph" Descendants="False"/>
+
+  <COND Type="and">
+    <ATTR Name=".Kind" Op="=">
+      <ITEM Value="Paragraph"/>
+    </ATTR>
+    <!-- Check paragraph does not contain EXIT as last statement -->
+    <NOT>
+      <ATTR Name=".LastStatement.Kind" Op="=">
+        <ITEM Value="EXIT"/>
+      </ATTR>
+    </NOT>
+  </COND>
+</CRITERION>
