@@ -1,4 +1,4 @@
-<CRITERION Name="Paragraphs Without EXIT/STOP/Transfer" 
+ee<CRITERION Name="Paragraphs Without EXIT/STOP/Transfer" 
            Category="COBOL Performance" 
            System="False" 
            ErrorCode="MFCA1105" 
@@ -135,5 +135,51 @@
         <ITEM Value="EXIT"/>
       </ATTR>
     </NOT>
+  </COND>
+</CRITERION>
+
+
++++++++++
+
+
+<CRITERION Name="Paragraph Without EXIT"
+           Category="COBOL Style"
+           System="False"
+           ErrorCode="MYCA2002"
+           Description="Flags paragraphs that do not contain an EXIT and are not followed by an EXIT-only stub paragraph.">
+
+  <ENTITY Name="PAR" Descendants="False"/>
+
+  <COND Type="and">
+
+    <!-- Paragraph does not contain EXIT itself -->
+    <REL Name=":Contains" Op="hasno">
+      <ENTITY Name="STAT"/>
+      <ATTR Name=".Kind" Op="=">
+        <ITEM Value="Exit"/>
+      </ATTR>
+    </REL>
+
+    <!-- And next paragraph is not an EXIT-only stub -->
+    <REL Name=":Follows" Op="hasno">
+      <ENTITY Name="PAR" Descendants="False"/>
+
+      <!-- That next paragraph must only contain EXIT to count as valid -->
+      <COND Type="and">
+        <REL Name=":Contains" Op="has">
+          <ENTITY Name="STAT"/>
+          <ATTR Name=".Kind" Op="=">
+            <ITEM Value="Exit"/>
+          </ATTR>
+        </REL>
+        <REL Name=":Contains" Op="hasno">
+          <ENTITY Name="STAT"/>
+          <ATTR Name=".Kind" Op="!=">
+            <ITEM Value="Exit"/>
+          </ATTR>
+        </REL>
+      </COND>
+    </REL>
+
   </COND>
 </CRITERION>
