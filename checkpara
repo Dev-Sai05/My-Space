@@ -1,0 +1,225 @@
+#!/usr/bin/perl
+#
+# Name :
+#      checkPara.pl
+#
+# Purpose:
+#      This program analyses COBOL source code from src folder.
+#      It will identify the start of PARA and EXIT. 
+#
+# Description:
+#      This program analyses COBOL source code from src folder to check
+#      whether the defined PARA has EXIT or not.
+#      
+#
+# How to run:
+#      See below - value of @MM
+#      checkPara.pl -if <Input file path> -d -of <Output file path optional>
+#      or
+#      checkPara.pl -if /fns/d/r/src/BR0000.COB -d -irno ALL
+#      or
+#      checkPara.pl -if /fns/d/r/src/BR0000.COB -d -irno 19090151
+#      or
+#      checkPara.pl -if /fns/d/r/src/BR0000.COB -d -of /home/fnsonld/out.txt 
+#
+
+
+use Data::Dumper ;
+use Getopt::EvaP ;
+use Env;
+use File::Basename;
+
+my %hash=();
+my $inputfile ;
+my $outputfile ;
+my $debug ;
+my %varHash = ();
+my @errorLines = () ;
+my $lineNum = 0;
+my $heading = 0;
+my $irNumber = "";
+
+@PDT = split /\n/, <<end_of_PDT ;
+PDT
+
+inputfile, if:    string  = \$required
+outputfile, of:   string
+irnumber, irno:   string 
+debug, d:         switch
+
+PDTEND no_file_list
+end_of_PDT
+
+@MM = split /\n/, <<end_of_MM;
+.inputfile
+          input cobol file
+
+end_of_MM
+
+sub main(){
+     #print "heloo";
+    initialize();
+
+    if($irNumber eq ""){
+        FileRead();
+    }
+    else{
+        IRFileRead();
+    }
+}
+
+
+sub initialize(){
+
+    &EvaP( \@PDT, \@MM, \%cmdarg );
+    $inputfile  = $cmdarg{'inputfile'} ;
+    $outputfile  = $cmdarg{'outputfile'} ;
+   $irNumber  = $cmdarg{'irnumber'} ;
+   $debug  = $cmdarg{'debug'} ;
+
+
+    if(!-e $inputfile || !-r $inputfile){
+        print "$inputfile not exists or readable\n";
+        exit;
+    }
+
+    if($outputfile eq ""){
+        my $inpFileName = basename($inputfile);
+#print "Inside read... --$inpFileName---\n";
+        $outputfile = "/home/$LOGNAME/COBOL_CODE/$inpFileName\_out.err";
+    }
+    print "\nInput File : $inputfile\nOutput File : $outputfile\nDebug : $debug\n";
+    open(OUTPUT, '>', "$outputfile") or die $!;
+}
+
+sub IRFileRead(){
+    #print "--------------helo\n";
+    my $flag=0;
+    my $curr_para;
+    my $previousLine="";
+    my $startPattern = "START\\s+OF\\s+IR\\s+$irNumber|START\\s+OF\\s+CR\\s+$irNumber";
+    my $endPattern = "END\\s+OF\\s+IR\\s+$irNumber|END\\s+OF\\s+CR\\s+$irNumber";
+    my $cmd = "perl -ne '/$startPattern/../$endPattern/ and print' $inputfile";
+
+    open(DATA, "$cmd |") or die "Couldn't open command , $!";
+
+    while(<DATA>) {
+
+    $line=$_;
+    $lineNum = $lineNum + 1;
+
+    next if ($line =~ /^......\*/ || $line =~ /^\s*$/);
+
+    if(($line =~ m/^...... ([a-zA-Z0-9\-]+)\./ && $line !~ /EXIT/ && $line !~ m/^...... \d+/) || $line =~ m/^...... ([a-zA-Z0-9\-]+)\s+SECTION\./)
+    {
+        if($line !~ /END-IF/){
+            $curr_para = $1 ;
+            #print "PARA:: $curr_para\n";
+            $hash{$curr_para}{'STAT'} = 2;                  #hash Store
+            $hash{$curr_para}{'LINE'} = $lineNum;           #line number Store
+            print OUTPUT "PARA FOUND IS [$curr_para]\n" if $debug;
+        }
+    }
+
+    elsif($line =~ m/^...... (.*-EXIT)\./ && $line !~ /THRU/ && $line !~ /GO/)
+    {
+        $line = $1 ;
+        #print "$line\n";
+        if($previousLine !~ /PERFORM/){
+            $hash{$curr_para}{'STAT'} = 1;
+            $hash{$curr_para}{'LINE'} = $lineNum;
+            print OUTPUT "1st EXIT FOUND IS [$line]\n" if $debug;
+        }
+    }
+
+    elsif(($line =~ m/^......(\s+EXIT)\./) || ($line =~ m/^\s+(EXIT)\./))
+    {
+        $line = $1;
+        #$line =~ s/\.\s*$//g;
+        $hash{$curr_para}{'STAT'} = 0;
+        $hash{$curr_para}{'LINE'} = $lineNum;
+        print OUTPUT "2nd EXIT FOUND IS [$line]\n" if $debug;
+    }
+    $previousLine=$line;
+
+    }
+
+    foreach $key ( keys(%hash) )
+    {
+        if (($hash{$key}{'STAT'} eq "1") || ($hash{$key}{'STAT'} eq "2") )  {
+            if ($heading eq 0) {
+                print OUTPUT "FILE names for which: \n 1.PARA available without EXIT file\n";
+                $heading=1;
+            }
+            print OUTPUT "Line Number : $hash{$key}{'LINE'} \t PARA Name: $key\n";
+        }
+    }
+close(DATA);
+}
+
+sub FileRead(){
+    #print "helo -------------"; 
+    my $flag=0; 
+    my $curr_para;
+    my $previousLine="";
+    open(DATA, '<', $inputfile) or die "Couldn't open $inputfile , $!";
+    while(<DATA>) {
+        $line=$_;
+        $lineNum = $lineNum + 1;
+        next if ($line =~ /^......\*/ || $line =~ /^\s*$/);
+         
+        if($line =~ m/^...... PROCEDURE DIVISION.*/)
+        {
+            $flag=1;
+        }
+
+        if($flag == 1)
+        {
+            if(($line =~ m/^...... ([a-zA-Z0-9\-]+)\./ && $line !~ /EXIT/ && $line !~ m/^...... \d+/) || $line =~ m/^...... ([a-zA-Z0-9\-]+)\s+SECTION\./)
+            {
+                if($line !~ /END-IF/){
+                    $curr_para = $1 ;
+                    #print "PARA:: $curr_para\n";
+                    $hash{$curr_para}{'STAT'} = 2;                  #hash Store
+                    $hash{$curr_para}{'LINE'} = $lineNum;           #line number Store
+		    print OUTPUT "PARA FOUND IS [$curr_para]\n" if $debug;
+                }
+            }
+
+            elsif($line =~ m/^...... (.*-EXIT)\./ && $line !~ /THRU/ && $line !~ /GO/)
+            {
+                $line = $1 ;
+                #print "$line\n";
+                if($previousLine !~ /PERFORM/){
+                    $hash{$curr_para}{'STAT'} = 1;                  
+                    $hash{$curr_para}{'LINE'} = $lineNum;           
+                    print OUTPUT "1st EXIT FOUND IS [$line]\n" if $debug;
+                }
+            }
+
+            elsif(($line =~ m/^......(\s+EXIT)\./) || ($line =~ m/^\s+(EXIT)\./))
+            {
+                $line = $1;
+                #$line =~ s/\.\s*$//g;
+                $hash{$curr_para}{'STAT'} = 0;                  
+                $hash{$curr_para}{'LINE'} = $lineNum;           
+                print OUTPUT "2nd EXIT FOUND IS [$line]\n" if $debug;
+            }
+        } 
+        $previousLine=$line; 
+    }
+            #print Dumper \%hash;
+        foreach $key ( keys(%hash) )
+        {
+            if (($hash{$key}{'STAT'} eq "1") || ($hash{$key}{'STAT'} eq "2") )  {
+                if ($heading eq 0) {
+                    print OUTPUT "FILE names for which: \n 1.PARA available without EXIT file\n";
+                    $heading=1;
+                }
+                print OUTPUT "Line Number : $hash{$key}{'LINE'} \t PARA Name: $key\n";
+            }
+        }
+}
+
+main();
+
